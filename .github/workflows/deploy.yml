@@ -12,24 +12,9 @@ jobs:
   deploy:
     runs-on: self-hosted
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '24'  # Adjust based on your Node.js version
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build application
-        run: npm run build
-
       - name: Deploy to Home Server
         run: |
           cd ${{ env.APP_DIR }}
           git pull
-          docker-compose down
-          docker system prune -a
+          docker-compose down --rmi local
           docker-compose up -d --build

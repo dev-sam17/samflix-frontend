@@ -7,11 +7,49 @@ type AsyncRequestHandler = (
   next?: () => void
 ) => Promise<Response | void> | void;
 
+interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 class SeriesController {
-  getAllSeries: AsyncRequestHandler = async (_req, res) => {
+  getAllSeries: AsyncRequestHandler = async (req, res) => {
     try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const genre = req.query.genre as string;
+      const search = req.query.search as string;
+      const sortBy = (req.query.sortBy as string) || 'title';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'asc';
+
+      const skip = (page - 1) * limit;
+
+      // Build where clause based on filters
+      const where: any = {};
+      if (genre) {
+        where.genres = { hasSome: [genre] };
+      }
+      if (search) {
+        where.OR = [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+
+      // Get total count for pagination
+      const total = await prisma.tvSeries.count({ where });
+
+      // Get series with pagination, filtering and sorting, including episodes
       const series = await prisma.tvSeries.findMany({
-        orderBy: { title: 'asc' },
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
         include: {
           episodes: {
             orderBy: [
@@ -21,14 +59,23 @@ class SeriesController {
           }
         }
       });
-      
-      // Transform the data to group episodes by season
-      const seriesWithSeasons = series.map(s => ({
-        ...s,
-        seasons: this.groupEpisodesIntoSeasons(s.episodes)
-      }));
-      
-      res.json(seriesWithSeasons);
+
+      const totalPages = Math.ceil(total / limit);
+
+      const response: PaginatedResponse<any> = {
+        data: series.map(s => ({
+          ...s,
+          seasons: this.groupEpisodesIntoSeasons(s.episodes)
+        })),
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages
+        }
+      };
+
+      res.json(response);
     } catch (error) {
       console.error('Error fetching series:', error);
       res.status(500).json({ error: 'Failed to fetch series' });
