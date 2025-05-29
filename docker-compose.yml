@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3310:3000"
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+    volumes:
+    # add your own media paths here
+      - /media/Storage3/Bollywood:/media/movies/bollywood 
+      - /media/Storage3/Web Series - Hindi:/media/web-series/hindi
+    restart: unless-stopped

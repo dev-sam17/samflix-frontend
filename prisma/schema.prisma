@@ -1,0 +1,92 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Movie {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tmdbId      Int     @unique
+  title       String
+  year        Int
+  filePath    String
+  fileName    String
+  resolution  String?
+  quality     String?
+  rip         String?
+  sound       String?
+  provider    String?
+  overview    String?
+  posterPath  String?
+  backdropPath String?
+  genres      String[]
+  runtime     Int?
+  rating      Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TvSeries {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  tmdbId      Int       @unique
+  title       String
+  overview    String?
+  posterPath  String?
+  backdropPath String?
+  genres      String[]
+  firstAirDate DateTime?
+  lastAirDate  DateTime?
+  status      String?
+  episodes    Episode[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Episode {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  tmdbId         Int
+  seasonNumber   Int
+  episodeNumber  Int
+  title          String
+  overview       String?
+  filePath       String
+  fileName       String
+  resolution     String?
+  quality        String?
+  rip            String?
+  sound          String?
+  provider       String?
+  airDate        DateTime?
+  series         TvSeries  @relation(fields: [seriesId], references: [id])
+  seriesId       String    @db.ObjectId
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([tmdbId, seasonNumber, episodeNumber], name: "episode_identifier")
+}
+
+model MediaFolder {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  path        String   @unique
+  type        String   // "movies" or "series"
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ScanningConflict {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  fileName    String
+  filePath    String
+  mediaType   String   // "movie" or "series"
+  possibleMatches Json // Array of TMDB matches
+  resolved    Boolean  @default(false)
+  selectedId  Int?    // Selected TMDB ID after resolution
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
