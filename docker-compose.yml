@@ -9,6 +9,9 @@ services:
       - .env
     environment:
       - NODE_ENV=production
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
     volumes:
     # add your own media paths here
       - /media/Storage3/Bollywood:/media/movies/bollywood 
