@@ -33,7 +33,7 @@ class MovieController {
       if (search) {
         where.OR = [
           { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } }
+          { overview: { contains: search, mode: 'insensitive' } }
         ];
       }
 
