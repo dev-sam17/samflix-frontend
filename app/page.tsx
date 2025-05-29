@@ -14,13 +14,13 @@ import { api, type Movie, type TvSeries } from "@/lib/api"
 import { useApi } from "@/hooks/use-api"
 
 function HeroSection({ featuredMovie }: { featuredMovie: Movie | null }) {
-  //if (!featuredMovie) {
-  //  return (
-  //    <div className="h-[70vh] bg-gray-800 rounded-xl animate-pulse flex items-center justify-center">
-  //      <div className="text-gray-400">Loading featured content...</div>
-  //    </div>
-  //  )
-  // }
+  if (!featuredMovie) {
+   return (
+     <div className="h-[70vh] bg-gray-800 rounded-xl animate-pulse flex items-center justify-center">
+       <div className="text-gray-400">Loading featured content...</div>
+     </div>
+   )
+  }
 
   return (
     <div className="relative h-[70vh] overflow-hidden rounded-xl">
