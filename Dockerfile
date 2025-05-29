@@ -1,6 +1,8 @@
 # Use Node.js LTS as the base image
 FROM node:20-slim
 
+RUN apt-get update -y && apt-get install -y openssl
+
 # Install pnpm
 RUN npm install -g pnpm
 
