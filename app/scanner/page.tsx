@@ -23,7 +23,7 @@ function AddFolderDialog({ onSuccess }: { onSuccess: () => void }) {
   const [folderType, setFolderType] = useState("")
   const { toast } = useToast()
 
-  const { mutate: addFolder, loading } = useMutation(api.scanner.addFolder)
+  const { mutate: addFolder, loading } = useMutation(api.client.scanner.addFolder)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -116,7 +116,10 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
   const [selectedMatch, setSelectedMatch] = useState("")
   const { toast } = useToast()
 
-  const { mutate: resolveConflict, loading } = useMutation(api.scanner.resolveConflict)
+  const { mutate: resolveConflict, loading } = useMutation(
+    (params: { id: string; selectedId: number }) => 
+      api.client.scanner.resolveConflict(params.id, params.selectedId)
+  )
 
   const handleResolve = async () => {
     if (!selectedMatch) {
@@ -129,7 +132,10 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
     }
 
     try {
-      await resolveConflict(conflict.id, Number.parseInt(selectedMatch))
+      await resolveConflict({
+        id: conflict.id,
+        selectedId: Number.parseInt(selectedMatch)
+      })
       toast({
         title: "Success",
         description: "Conflict resolved successfully",
@@ -164,7 +170,7 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
 
           <div>
             <Label className="text-sm text-gray-400 mb-3 block">Select Correct Match</Label>
-            <div className="space-y-2">
+            <div className="space-y-2 overflow-y-scroll max-h-[400px]">
               {conflict.possibleMatches.map((match: any) => (
                 <Card
                   key={match.id}
@@ -218,18 +224,22 @@ export default function ScannerPage() {
   const { toast } = useToast()
 
   // Fetch data
-  const { data: folders, loading: foldersLoading, refetch: refetchFolders } = useApi(() => api.scanner.getFolders(), [])
+  const { data: folders, loading: foldersLoading, refetch: refetchFolders } = useApi(() => api.client.scanner.getFolders(), [])
   const {
     data: conflicts,
     loading: conflictsLoading,
     refetch: refetchConflicts,
-  } = useApi(() => api.scanner.getConflicts(), [])
-  const { data: healthData } = useApi(() => api.system.healthCheck(), [])
+  } = useApi(() => api.client.scanner.getConflicts(), [])
+  const { data: healthData } = useApi(() => api.client.system.healthCheck(), [])
 
   // Mutations
-  const { mutate: startScan, loading: scanLoading } = useMutation(api.scanner.startScan)
-  const { mutate: deleteFolder } = useMutation(api.scanner.deleteFolder)
-  const { mutate: updateFolder } = useMutation(api.scanner.updateFolder)
+  const { mutate: startScan, loading: scanLoading } = useMutation(api.client.scanner.startScan)
+  const { mutate: deleteFolder } = useMutation(api.client.scanner.deleteFolder)
+  const { mutate: deleteConflict } = useMutation(api.client.scanner.deleteConflict)
+  const { mutate: updateFolder } = useMutation(
+    (params: { id: string; updates: Partial<MediaFolder> }) => 
+      api.client.scanner.updateFolder(params.id, params.updates)
+  )
 
   const handleStartScan = async () => {
     try {
@@ -268,7 +278,10 @@ export default function ScannerPage() {
 
   const handleToggleFolder = async (folder: MediaFolder) => {
     try {
-      await updateFolder(folder.id, { active: !folder.active })
+      await updateFolder({
+        id: folder.id,
+        updates: { active: !folder.active }
+      })
       toast({
         title: "Success",
         description: `Folder ${folder.active ? "deactivated" : "activated"} successfully`,
@@ -278,6 +291,25 @@ export default function ScannerPage() {
       toast({
         title: "Error",
         description: "Failed to update folder",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteConflict = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this conflict?")) return
+
+    try {
+      await deleteConflict(id)
+      toast({
+        title: "Success",
+        description: "Scanning conflict deleted successfully",
+      })
+      refetchConflicts()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete conflict",
         variant: "destructive",
       })
     }
@@ -499,9 +531,10 @@ export default function ScannerPage() {
                               size="sm"
                               variant="outline"
                               className="border-gray-600 text-gray-300 hover:bg-white/10"
+                              onClick={() => handleDeleteConflict(conflict.id)}
                             >
                               <XCircle className="w-4 h-4 mr-1" />
-                              Ignore
+                              Remove
                             </Button>
                           </div>
                         </div>

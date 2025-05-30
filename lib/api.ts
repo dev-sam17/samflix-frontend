@@ -350,6 +350,13 @@ export const clientApi = {
         body: JSON.stringify({ selectedId }),
       }, 'no-store')
     },
+
+    // Delete scanning conflict
+    deleteConflict: async (id: string): Promise<{ message: string }> => {
+      return apiRequest<{ message: string }>(`/api/scanner/conflicts/${id}`, {
+        method: "DELETE",
+      }, 'no-store')
+    },
   },
 
   system: {
