@@ -16,6 +16,7 @@ import { Scan, FolderPlus, Folder, AlertTriangle, CheckCircle, XCircle, Trash2, 
 import Link from "next/link"
 import { api, type MediaFolder, type ScanningConflict } from "@/lib/api"
 import { useApi, useMutation } from "@/hooks/use-api"
+import { ScanProgress } from "./components/ScanProgress"
 
 function AddFolderDialog({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false)
@@ -222,6 +223,7 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
 
 export default function ScannerPage() {
   const { toast } = useToast()
+  const [showScanProgress, setShowScanProgress] = useState(false)
 
   // Fetch data
   const { data: folders, loading: foldersLoading, refetch: refetchFolders } = useApi(() => api.client.scanner.getFolders(), [])
@@ -242,19 +244,16 @@ export default function ScannerPage() {
   )
 
   const handleStartScan = async () => {
-    try {
-      await startScan(undefined)
-      toast({
-        title: "Success",
-        description: "Manual scan started successfully",
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to start scan",
-        variant: "destructive",
-      })
-    }
+    setShowScanProgress(true)
+  }
+
+  const handleScanComplete = () => {
+    refetchFolders()
+    refetchConflicts()
+    toast({
+      title: "Scan Completed",
+      description: "Media scan completed successfully",
+    })
   }
 
   const handleDeleteFolder = async (id: string) => {
@@ -357,12 +356,27 @@ export default function ScannerPage() {
 
         {/* Quick Actions */}
         <div className="mb-8 flex gap-4">
-          <Button size="lg" className="bg-red-600 hover:bg-red-700" disabled={scanLoading} onClick={handleStartScan}>
-            <Scan className="w-5 h-5 mr-2" />
-            {scanLoading ? "Scanning..." : "Start Manual Scan"}
-          </Button>
+          {!showScanProgress ? (
+            <Button 
+              size="lg" 
+              className="bg-red-600 hover:bg-red-700" 
+              onClick={handleStartScan}
+            >
+              <Scan className="w-5 h-5 mr-2" />
+              Start Manual Scan
+            </Button>
+          ) : null}
           <AddFolderDialog onSuccess={refetchFolders} />
         </div>
+
+        {/* Scan Progress */}
+        {showScanProgress && (
+          <div className="mb-8">
+            <ScanProgress 
+              onComplete={handleScanComplete} 
+            />
+          </div>
+        )}
 
         {/* Scan Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
