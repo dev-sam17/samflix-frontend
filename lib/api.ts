@@ -357,6 +357,12 @@ export const clientApi = {
         method: "DELETE",
       }, 'no-store')
     },
+
+    deleteAllConflicts: async (): Promise<{ message: string }> => {
+      return apiRequest<{ message: string }>(`/api/scanner/conflicts`, {
+        method: "DELETE",
+      }, 'no-store')
+    },
   },
 
   system: {

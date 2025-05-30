@@ -235,9 +235,9 @@ export default function ScannerPage() {
   const { data: healthData } = useApi(() => api.client.system.healthCheck(), [])
 
   // Mutations
-  const { mutate: startScan, loading: scanLoading } = useMutation(api.client.scanner.startScan)
   const { mutate: deleteFolder } = useMutation(api.client.scanner.deleteFolder)
   const { mutate: deleteConflict } = useMutation(api.client.scanner.deleteConflict)
+  const { mutate: deleteAllConflicts } = useMutation(api.client.scanner.deleteAllConflicts)
   const { mutate: updateFolder } = useMutation(
     (params: { id: string; updates: Partial<MediaFolder> }) => 
       api.client.scanner.updateFolder(params.id, params.updates)
@@ -313,6 +313,25 @@ export default function ScannerPage() {
       })
     }
   }
+
+  const handleDeleteAllConflicts = async () => {
+    if (!confirm("Are you sure you want to delete all conflicts?")) return
+
+    try {
+      await deleteAllConflicts("all")
+      toast({
+        title: "Success",
+        description: "All scanning conflicts deleted successfully",
+      })
+      refetchConflicts()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete conflicts",
+        variant: "destructive",
+      })
+    }
+  } 
 
   // Calculate stats
   const totalFolders = folders?.length || 0
@@ -498,6 +517,15 @@ export default function ScannerPage() {
           </TabsContent>
 
           <TabsContent value="conflicts" className="mt-6">
+            <div className="flex justify-end mb-6">
+              <Button
+                onClick={handleDeleteAllConflicts}
+                className="bg-red-600 hover:bg-red-700 p-2 mr-4"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete All Conflicts
+              </Button>
+            </div>
             <div className="space-y-4">
               {conflictsLoading ? (
                 <div className="space-y-4">
