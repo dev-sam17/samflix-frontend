@@ -3,10 +3,20 @@ import { ParsedMovie, ParsedEpisode } from '../../types/media.types';
 
 class ParserService {
   private readonly movieRegexPatterns = [
-    // Pattern 1: Movie Name (Year) [Resolution] [Quality] [RIP] [Sound] [Provider]
-    /^(.+?)\s*\((\d{4})\)\s*(?:\[(.*?)\])?\s*(?:\[(.*?)\])?\s*(?:\[(.*?)\])?\s*(?:\[(.*?)\])?\s*(?:\[(.*?)\])?/,
-    // Pattern 2: Movie.Name.Year.Resolution.Quality.RIP.Sound.Provider
-    /^(.+?)\.(\d{4})(?:\.(.*?))?(?:\.(.*?))?(?:\.(.*?))?(?:\.(.*?))?(?:\.(.*?))?$/
+    // Pattern 1: Title (Year) [Attr1] [Attr2] ... [AttrN]
+    /^(.+?)\s*\((\d{4})\)\s*(?:\[(.*?)\]\s*)*(.*)$/i,
+  
+    // Pattern 2: Title Year Attr1 Attr2 ... AttrN (space or dot separated)
+    /^(.+?)[\s\.]+(\d{4})[\s\.]+(.*)$/i,
+  
+    // Pattern 3: Title [Attr1] [Attr2] ... [AttrN]
+    /^(.+?)\s*(?:\[(.*?)\]\s*)+(.*)$/i,
+  
+    // Pattern 4: Title (Attr1 Attr2 ... AttrN)
+    /^(.+?)\s*\((.*?)\)\s*(.*)$/i,
+  
+    // Pattern 5: Title only (fallback)
+    /^(.+?)$/
   ];
 
   private readonly episodeRegexPatterns = [
