@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, use } from "react"
 import { ApiError } from "@/lib/api"
 
-// Generic hook for API calls
+// For client components that need real-time data
 export function useApi<T>(apiCall: () => Promise<T>, dependencies: any[] = []) {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
@@ -26,90 +26,37 @@ export function useApi<T>(apiCall: () => Promise<T>, dependencies: any[] = []) {
     fetchData()
   }, [fetchData])
 
-  const refetch = useCallback(() => {
-    fetchData()
-  }, [fetchData])
-
-  return { data, loading, error, refetch }
+  return { data, loading, error, refetch: fetchData }
 }
 
-// Hook for paginated data
-export function usePaginatedApi<T>(
-  apiCall: (params: any) => Promise<{ data: T[]; pagination: any }>,
-  initialParams: any = {},
+// For server components or client components that can use Suspense
+export function useSuspenseApi<T>(promise: Promise<T>) {
+  return use(promise)
+}
+
+// Hook for handling mutations (create, update, delete operations)
+export function useMutation<T, P = any>(
+  mutationFn: (params: P) => Promise<T>
 ) {
-  const [data, setData] = useState<T[]>([])
-  const [pagination, setPagination] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<ApiError | null>(null)
-  const [params, setParams] = useState(initialParams)
-
-  const fetchData = useCallback(
-    async (newParams = params) => {
-      try {
-        setLoading(true)
-        setError(null)
-        const result = await apiCall(newParams)
-        setData(result.data)
-        setPagination(result.pagination)
-      } catch (err) {
-        setError(err instanceof ApiError ? err : new ApiError("Unknown error", 0))
-      } finally {
-        setLoading(false)
-      }
-    },
-    [apiCall, params],
-  )
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  const updateParams = useCallback(
-    (newParams: any) => {
-      setParams({ ...params, ...newParams })
-      fetchData({ ...params, ...newParams })
-    },
-    [params, fetchData],
-  )
-
-  const refetch = useCallback(() => {
-    fetchData()
-  }, [fetchData])
-
-  return {
-    data,
-    pagination,
-    loading,
-    error,
-    params,
-    updateParams,
-    refetch,
-  }
-}
-
-// Hook for mutations (POST, PUT, DELETE)
-export function useMutation<T, P = any>(mutationFn: (params: P) => Promise<T>) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
+  const [data, setData] = useState<T | null>(null)
 
-  const mutate = useCallback(
-    async (params: P): Promise<T | null> => {
-      try {
-        setLoading(true)
-        setError(null)
-        const result = await mutationFn(params)
-        return result
-      } catch (err) {
-        const apiError = err instanceof ApiError ? err : new ApiError("Unknown error", 0)
-        setError(apiError)
-        throw apiError
-      } finally {
-        setLoading(false)
-      }
-    },
-    [mutationFn],
-  )
+  const mutate = async (params: P) => {
+    try {
+      setLoading(true)
+      setError(null)
+      const result = await mutationFn(params)
+      setData(result)
+      return result
+    } catch (err) {
+      const error = err instanceof ApiError ? err : new ApiError("Unknown error", 0)
+      setError(error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  return { mutate, loading, error }
+  return { mutate, loading, error, data }
 }

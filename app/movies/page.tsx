@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,8 +11,18 @@ import { Search, Filter, Grid, List, Star, Clock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { api, type Movie } from "@/lib/api"
-import { usePaginatedApi, useApi } from "@/hooks/use-api"
+import { useApi } from "@/hooks/use-api"
 
+type MovieParams = {
+  page: number
+  limit: number
+  sortBy: string
+  sortOrder: "asc" | "desc"
+  search?: string
+  genre?: string
+}
+
+// This can be a server component since it's just presentational
 function MovieCard({ movie, viewMode }: { movie: Movie; viewMode: "grid" | "list" }) {
   if (viewMode === "list") {
     return (
@@ -126,6 +137,7 @@ function MovieCard({ movie, viewMode }: { movie: Movie; viewMode: "grid" | "list
   )
 }
 
+// This can be a server component since it's just presentational
 function LoadingGrid({ viewMode }: { viewMode: "grid" | "list" }) {
   if (viewMode === "list") {
     return (
@@ -151,62 +163,41 @@ function LoadingGrid({ viewMode }: { viewMode: "grid" | "list" }) {
 }
 
 export default function MoviesPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedGenre, setSelectedGenre] = useState("all")
-  const [sortBy, setSortBy] = useState("title")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-
-  // Fetch genres
-  const { data: genres } = useApi(() => api.movies.getGenres(), [])
-
-  // Fetch movies with pagination and filters
-  const {
-    data: movies,
-    loading,
-    pagination,
-    updateParams,
-  } = usePaginatedApi((params) => api.movies.getAll(params), {
+  const [params, setParams] = useState<MovieParams>({
     page: 1,
     limit: 24,
-    sortBy: "title",
-    sortOrder: "asc" as const,
+    sortBy: "createdAt",
+    sortOrder: "desc",
   })
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedGenre, setSelectedGenre] = useState("all")
 
-  // Update filters
-  useEffect(() => {
-    const params: any = {
-      page: 1,
-      sortBy,
-      sortOrder: sortBy === "year" || sortBy === "rating" ? "desc" : "asc",
-    }
+  // Use the new client API for real-time data
+  const { data: moviesData, loading: moviesLoading } = useApi(
+    () => api.client.movies.getAll({ ...params, search: searchQuery, genre: selectedGenre !== "all" ? selectedGenre : undefined }),
+    [params, searchQuery, selectedGenre]
+  )
 
-    if (searchQuery) {
-      params.search = searchQuery
-    }
+  const { data: genres } = useApi(() => api.client.movies.getGenres(), [])
 
-    if (selectedGenre !== "all") {
-      params.genre = selectedGenre
-    }
+  const handleLoadMore = useCallback(() => {
+    setParams((prev) => ({ ...prev, page: prev.page + 1 }))
+  }, [])
 
-    updateParams(params)
-  }, [searchQuery, selectedGenre, sortBy, updateParams])
+  const handleSearch = useCallback((value: string) => {
+    setParams((prev) => ({ ...prev, page: 1 }))
+    setSearchQuery(value)
+  }, [])
 
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery !== "") {
-        updateParams({ search: searchQuery, page: 1 })
-      }
-    }, 500)
+  const handleGenreChange = useCallback((value: string) => {
+    setParams((prev) => ({ ...prev, page: 1 }))
+    setSelectedGenre(value)
+  }, [])
 
-    return () => clearTimeout(timer)
-  }, [searchQuery, updateParams])
-
-  const handleLoadMore = () => {
-    if (pagination && pagination.page < pagination.totalPages) {
-      updateParams({ page: pagination.page + 1 })
-    }
-  }
+  const handleSortChange = useCallback((value: string) => {
+    setParams((prev) => ({ ...prev, page: 1, sortBy: value }))
+  }, [])
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -236,26 +227,20 @@ export default function MoviesPage() {
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
+        {/* Filters */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Movies</h1>
-          <p className="text-gray-400">Discover and manage your movie collection</p>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="mb-8 space-y-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Search movies..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 className="pl-10 bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-400 focus:border-red-500"
               />
             </div>
 
-            <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+            <Select value={selectedGenre} onValueChange={handleGenreChange}>
               <SelectTrigger className="w-full md:w-48 bg-gray-800/50 border-gray-700 text-white">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="Genre" />
@@ -270,7 +255,7 @@ export default function MoviesPage() {
               </SelectContent>
             </Select>
 
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={params.sortBy} onValueChange={handleSortChange}>
               <SelectTrigger className="w-full md:w-48 bg-gray-800/50 border-gray-700 text-white">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -301,15 +286,16 @@ export default function MoviesPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div> 
 
         {/* Results Count */}
         <div className="mb-6">
           <p className="text-gray-400">
-            {pagination ? (
+            {moviesData?.meta ? (
               <>
-                Showing {(pagination.page - 1) * pagination.limit + 1} -{" "}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} movies
+                Showing {(moviesData.meta.page - 1) * moviesData.meta.limit + 1} -{" "}
+                {Math.min(moviesData.meta.page * moviesData.meta.limit, moviesData.meta.total)} of{" "}
+                {moviesData.meta.total} movies
               </>
             ) : (
               "Loading movies..."
@@ -318,21 +304,21 @@ export default function MoviesPage() {
         </div>
 
         {/* Movies Grid/List */}
-        {loading ? (
+        {moviesLoading ? (
           <LoadingGrid viewMode={viewMode} />
-        ) : movies.length > 0 ? (
+        ) : moviesData?.data.length ? (
           <>
             <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6" : "space-y-4"}>
-              {movies.map((movie) => (
+              {moviesData.data.map((movie) => (
                 <MovieCard key={movie.id} movie={movie} viewMode={viewMode} />
               ))}
             </div>
 
             {/* Load More Button */}
-            {pagination && pagination.page < pagination.totalPages && (
+            {moviesData.meta && moviesData.meta.page < moviesData.meta.totalPages && (
               <div className="mt-8 text-center">
-                <Button onClick={handleLoadMore} className="bg-red-600 hover:bg-red-700" disabled={loading}>
-                  {loading ? "Loading..." : "Load More"}
+                <Button onClick={handleLoadMore} className="bg-red-600 hover:bg-red-700" disabled={moviesLoading}>
+                  {moviesLoading ? "Loading..." : "Load More"}
                 </Button>
               </div>
             )}

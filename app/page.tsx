@@ -179,18 +179,18 @@ export default function HomePage() {
 
   // Fetch featured movies
   const { data: moviesData, loading: moviesLoading } = useApi(
-    () => api.movies.getAll({ limit: 6, sortBy: "rating", sortOrder: "desc" }),
+    () => api.client.movies.getAll({ limit: 6, sortBy: "rating", sortOrder: "desc" }),
     [],
   )
 
   // Fetch featured series
   const { data: seriesData, loading: seriesLoading } = useApi(
-    () => api.series.getAll({ limit: 6, sortBy: "firstAirDate", sortOrder: "desc" }),
+    () => api.client.series.getAll({ limit: 6, sortBy: "firstAirDate", sortOrder: "desc" }),
     [],
   )
 
   // Get system stats
-  const { data: healthData } = useApi(() => api.system.healthCheck(), [])
+  const { data: healthData } = useApi(() => api.client.system.healthCheck(), [])
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -201,8 +201,11 @@ export default function HomePage() {
 
     setIsSearching(true)
     try {
-      const [movieResults, seriesResults] = await Promise.all([api.movies.search(query), api.series.search(query)])
-      setSearchResults([...movieResults, ...seriesResults])
+      const [movieResults, seriesResults] = await Promise.all([
+        api.client.movies.getAll({ search: query }),
+        api.client.series.getAll({ search: query }),
+      ])
+      setSearchResults([...movieResults.data, ...seriesResults.data])
     } catch (error) {
       console.error("Search error:", error)
       setSearchResults([])
@@ -244,7 +247,7 @@ export default function HomePage() {
 
       <div className="container mx-auto px-4 py-8 space-y-12">
         {/* Hero Section */}
-       {/* <HeroSection featuredMovie={featuredMovie} /> */}
+       <HeroSection featuredMovie={featuredMovie} />
 
         {/* Search */}
         <SearchSection onSearch={handleSearch} />
@@ -315,14 +318,14 @@ export default function HomePage() {
           <Card className="bg-gradient-to-br from-red-600/20 to-red-800/20 border-red-500/30">
             <CardContent className="p-6 text-center">
               <Film className="w-8 h-8 text-red-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{moviesData?.pagination?.total || 0}</div>
+              <div className="text-2xl font-bold text-white">{moviesData?.meta?.total || 0}</div>
               <div className="text-sm text-gray-400">Movies</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 border-blue-500/30">
             <CardContent className="p-6 text-center">
               <Tv className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{seriesData?.pagination?.total || 0}</div>
+              <div className="text-2xl font-bold text-white">{seriesData?.meta?.total || 0}</div>
               <div className="text-sm text-gray-400">TV Series</div>
             </CardContent>
           </Card>
