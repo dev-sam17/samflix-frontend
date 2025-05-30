@@ -19,11 +19,28 @@ class ParserService {
     /^(.+?)$/
   ];
 
-  private readonly episodeRegexPatterns = [
-    // Common episode patterns
-    /^(.+?)[\.\s][Ss](\d{1,2})[Ee](\d{1,2})/i,
-    /^(.+?)[\.\s](\d{1,2})x(\d{1,2})/i
-  ];
+ private readonly episodeRegexPatterns = [
+   // Pattern 1: Series - S01E02 - Title or Series.S01E02.Title
+   /^(.+?)[\s\.\-\_]+[Ss](\d{1,2})[Ee](\d{1,2})[\s\.\-\_]+(.*)$/i,
+   /^(.+?)[\s\.\-\_]+[Ss](\d{1,2})[Ee](\d{1,2})[\s\.\-\_]*$/i,
+ 
+   // Pattern 2: Series - 01x02 - Title or Series.01x02.Title
+   /^(.+?)[\s\.\-\_]+(\d{1,2})[xX](\d{1,2})[\s\.\-\_]+(.*)$/i,
+   /^(.+?)[\s\.\-\_]+(\d{1,2})[xX](\d{1,2})[\s\.\-\_]*$/i,
+ 
+   // Pattern 3: Series - S01 - E02 - Title (rare, but possible)
+   /^(.+?)[\s\.\-\_]+[Ss](\d{1,2})[\s\.\-\_]+[Ee](\d{1,2})[\s\.\-\_]+(.*)$/i,
+ 
+   // Pattern 4: [SubsPlease] Chainsaw Man - 01v2 (1080p) [HASH]
+   /^(.+?)[\s\.\-\_]+(\d{2,3})[vV]\d*[\s\.\-\_]+(.*)$/i,
+ 
+   // Pattern 5: Series - 01 - Title (seasonless)
+   /^(.+?)[\s\.\-\_]+(\d{2,3})[\s\.\-\_]+(.*)$/i,
+ 
+   // Pattern 6: Fallback for just SxxEyy or xxXyy without title
+   /^(.+?)[\s\.\-\_]+[Ss](\d{1,2})[Ee](\d{1,2})$/i,
+   /^(.+?)[\s\.\-\_]+(\d{1,2})[xX](\d{1,2})$/i
+ ];
 
   parseMovie(filePath: string): ParsedMovie | null {
     const fileName = path.basename(filePath, path.extname(filePath));
