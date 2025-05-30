@@ -63,7 +63,7 @@ class SeriesController {
       const totalPages = Math.ceil(total / limit);
 
       const response: PaginatedResponse<any> = {
-        data: series.map(s => ({
+        data: series.map((s: any) => ({
           ...s,
           seasons: this.groupEpisodesIntoSeasons(s.episodes)
         })),
@@ -245,7 +245,7 @@ class SeriesController {
         select: { genres: true }
       });
       
-      const genres = Array.from(new Set(series.flatMap(s => s.genres))).sort();
+      const genres = Array.from(new Set(series.flatMap((s: any) => s.genres))).sort();
       res.json(genres);
     } catch (error) {
       console.error('Error fetching genres:', error);
