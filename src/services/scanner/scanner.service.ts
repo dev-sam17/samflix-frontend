@@ -110,7 +110,7 @@ class ScannerService {
             { fileName },
             {
               AND: [
-                { seriesName: { equals: seriesName, mode: 'insensitive' } },
+                { title: { equals: seriesName, mode: 'insensitive' } },
                 { seasonNumber },
                 { episodeNumber }
               ]
