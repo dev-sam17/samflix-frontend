@@ -237,6 +237,164 @@ class ScannerService {
       throw error;
     }
   }
+
+  /**
+   * Resolves a scanning conflict by adding the selected media to the database
+   * @param conflictId The ID of the conflict to resolve
+   * @param selectedId The TMDB ID of the selected media
+   * @returns The updated conflict
+   */
+  async resolveConflict(conflictId: string, selectedId: number) {
+    try {
+      // Get the conflict details first
+      const conflictDetails = await prisma.scanningConflict.findUnique({
+        where: { id: conflictId }
+      });
+
+      if (!conflictDetails) {
+        throw new Error('Conflict not found');
+      }
+
+      // Update the conflict as resolved
+      const conflict = await prisma.scanningConflict.update({
+        where: { id: conflictId },
+        data: { 
+          resolved: true,
+          selectedId
+        }
+      });
+
+      // Add the media to the database based on the conflict type
+      if (conflictDetails.mediaType === 'movie') {
+        // Get movie details from TMDB
+        const movieDetails = await tmdbService.getMovieDetails(selectedId);
+        
+        // Parse the file to get quality information
+        const parsedMovie = parserService.parseMovie(conflictDetails.filePath);
+        
+        if (parsedMovie && movieDetails) {
+          // Add the movie to the database
+          await prisma.movie.upsert({
+            where: { tmdbId: movieDetails.id },
+            create: {
+              tmdbId: movieDetails.id,
+              title: movieDetails.title,
+              year: new Date(movieDetails.release_date).getFullYear(),
+              overview: movieDetails.overview,
+              posterPath: movieDetails.poster_path,
+              backdropPath: movieDetails.backdrop_path,
+              genres: movieDetails.genres.map(g => g.name),
+              runtime: movieDetails.runtime,
+              rating: movieDetails.vote_average,
+              filePath: parsedMovie.filePath,
+              fileName: parsedMovie.fileName,
+              resolution: parsedMovie.resolution,
+              quality: parsedMovie.quality,
+              rip: parsedMovie.rip,
+              sound: parsedMovie.sound,
+              provider: parsedMovie.provider
+            },
+            update: {
+              filePath: parsedMovie.filePath,
+              fileName: parsedMovie.fileName,
+              resolution: parsedMovie.resolution,
+              quality: parsedMovie.quality,
+              rip: parsedMovie.rip,
+              sound: parsedMovie.sound,
+              provider: parsedMovie.provider
+            }
+          });
+        }
+      } else if (conflictDetails.mediaType === 'series') {
+        // Get series details from TMDB
+        const seriesDetails = await tmdbService.getTVDetails(selectedId);
+        
+        // Parse the file to get episode information
+        const parsedEpisode = parserService.parseEpisode(conflictDetails.filePath);
+        
+        if (parsedEpisode && seriesDetails) {
+          // Get episode details
+          const episodeDetails = await tmdbService.getEpisodeDetails(
+            selectedId,
+            parsedEpisode.seasonNumber,
+            parsedEpisode.episodeNumber
+          );
+          
+          // Add the series to the database
+          const series = await prisma.tvSeries.upsert({
+            where: { tmdbId: seriesDetails.id },
+            create: {
+              tmdbId: seriesDetails.id,
+              title: seriesDetails.name,
+              overview: seriesDetails.overview,
+              posterPath: seriesDetails.poster_path,
+              backdropPath: seriesDetails.backdrop_path,
+              genres: seriesDetails.genres.map(g => g.name),
+              firstAirDate: new Date(seriesDetails.first_air_date),
+              lastAirDate: new Date(seriesDetails.last_air_date),
+              status: seriesDetails.status
+            },
+            update: {}
+          });
+          
+          // Add the episode to the database
+          if (episodeDetails) {
+            const episodeData = {
+              tmdbId: episodeDetails.id,
+              title: episodeDetails.name,
+              overview: episodeDetails.overview,
+              filePath: parsedEpisode.filePath,
+              fileName: parsedEpisode.fileName,
+              resolution: parsedEpisode.resolution,
+              quality: parsedEpisode.quality,
+              rip: parsedEpisode.rip,
+              sound: parsedEpisode.sound,
+              provider: parsedEpisode.provider,
+              seasonNumber: episodeDetails.season_number,
+              episodeNumber: episodeDetails.episode_number,
+              airDate: episodeDetails.air_date ? new Date(episodeDetails.air_date) : null,
+              seriesId: series.id
+            };
+            
+            // Check if episode already exists
+            const existingEpisode = await prisma.episode.findFirst({
+              where: {
+                tmdbId: episodeDetails.id,
+                seasonNumber: episodeDetails.season_number,
+                episodeNumber: episodeDetails.episode_number
+              }
+            });
+            
+            if (existingEpisode) {
+              // Update existing episode
+              await prisma.episode.update({
+                where: { id: existingEpisode.id },
+                data: {
+                  filePath: parsedEpisode.filePath,
+                  fileName: parsedEpisode.fileName,
+                  resolution: parsedEpisode.resolution,
+                  quality: parsedEpisode.quality,
+                  rip: parsedEpisode.rip,
+                  sound: parsedEpisode.sound,
+                  provider: parsedEpisode.provider
+                }
+              });
+            } else {
+              // Create new episode
+              await prisma.episode.create({
+                data: episodeData
+              });
+            }
+          }
+        }
+      }
+
+      return conflict;
+    } catch (error) {
+      console.error('Error resolving conflict:', error);
+      throw error;
+    }
+  }
 }
 
 export const scannerService = new ScannerService();

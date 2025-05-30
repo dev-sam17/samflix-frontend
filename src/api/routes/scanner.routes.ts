@@ -158,21 +158,16 @@ const resolveConflictHandler: AsyncRouteHandler<ResolveConflictParams, any, Reso
       return;
     }
 
-    const conflict = await prisma.scanningConflict.update({
-      where: { id: req.params.id },
-      data: { 
-        resolved: true,
-        selectedId
-      }
-    });
-
-    // Trigger a rescan of this specific file
-    // Implementation pending based on file type (movie/series)
-
+    // Use the scanner service to resolve the conflict
+    const conflict = await scannerService.resolveConflict(req.params.id, selectedId);
     res.json(conflict);
   } catch (error) {
     console.error('Error resolving conflict:', error);
-    res.status(500).json({ error: 'Failed to resolve conflict' });
+    if (error.message === 'Conflict not found') {
+      res.status(404).json({ error: 'Conflict not found' });
+    } else {
+      res.status(500).json({ error: 'Failed to resolve conflict' });
+    }
   }
 };
 
