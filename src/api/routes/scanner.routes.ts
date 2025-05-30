@@ -221,7 +221,7 @@ const deleteConflictHandler: AsyncRouteHandler<{ id: string }> = async (req, res
   }
 };
 
-router.post('/scan', scanHandler);
+router.get('/scan', scanHandler);
 router.post('/folders', addFolderHandler);
 router.get('/folders', getFoldersHandler);
 router.patch('/folders/:id', updateFolderHandler);
