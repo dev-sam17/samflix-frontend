@@ -5,21 +5,124 @@ import { parserService } from '../parser/parser.service';
 import { tmdbService } from '../tmdb/tmdb.service';
 import { ScannerConfig, TMDBMovieResult, TMDBTVResult } from '../../types/media.types';
 
+// Define a type for progress callback
+type ProgressCallback = (status: string, progress: number, details?: any) => void;
+
 class ScannerService {
   private readonly supportedExtensions: string[] = ['.mp4', '.mkv', '.avi'];
   
-  async scanAll(config: ScannerConfig) {
+  /**
+   * Scans all configured media directories and cleans up orphaned entries
+   * @param config The scanner configuration
+   * @param progressCallback Optional callback function to report progress
+   * @returns A summary of the scan results
+   */
+  async scanAll(config: ScannerConfig, progressCallback?: ProgressCallback) {
     try {
-      for (const moviePath of config.moviePaths) {
+      const reportProgress = (status: string, progress: number, details?: any) => {
+        console.log(`${status}: ${progress}%${details ? ` - ${JSON.stringify(details)}` : ''}`);
+        if (progressCallback) {
+          progressCallback(status, progress, details);
+        }
+      };
+
+      reportProgress('Starting media scan', 0);
+      
+      // Count total paths to calculate progress
+      const totalPaths = config.moviePaths.length + config.seriesPaths.length;
+      let completedPaths = 0;
+      
+      // First scan all directories for new media
+      for (let i = 0; i < config.moviePaths.length; i++) {
+        const moviePath = config.moviePaths[i];
+        reportProgress('Scanning movie directory', 
+          Math.floor((completedPaths / totalPaths) * 70), 
+          { path: moviePath, current: i + 1, total: config.moviePaths.length }
+        );
+        
         await this.scanMovieDirectory(moviePath);
+        completedPaths++;
       }
       
-      for (const seriesPath of config.seriesPaths) {
+      for (let i = 0; i < config.seriesPaths.length; i++) {
+        const seriesPath = config.seriesPaths[i];
+        reportProgress('Scanning series directory', 
+          Math.floor((completedPaths / totalPaths) * 70), 
+          { path: seriesPath, current: i + 1, total: config.seriesPaths.length }
+        );
+        
         await this.scanSeriesDirectory(seriesPath);
+        completedPaths++;
       }
+      
+      // Then check for and clean up orphaned entries
+      reportProgress('Checking for orphaned media entries', 75);
+      const cleanupResults = await this.cleanupOrphanedEntries(progressCallback);
+      
+      reportProgress('Media scan and cleanup completed', 100, cleanupResults);
+      return cleanupResults;
     } catch (error) {
       console.error('Error during media scan:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Checks if a movie is already in the database
+   * @param fileName The name of the movie file
+   * @param filePath The path to the movie file
+   * @param title The title of the movie
+   * @param year The release year of the movie
+   * @returns True if the movie is already in the database, false otherwise
+   */
+  private async isMovieInDatabase(fileName: string, filePath: string, title: string, year?: number): Promise<boolean> {
+    try {
+      // Check if there's a movie with the same file path or file name
+      const existingMovie = await prisma.movie.findFirst({
+        where: {
+          OR: [
+            { filePath },
+            { fileName },
+            {
+              AND: [
+                { title: { equals: title, mode: 'insensitive' } },
+                year ? { year } : {}
+              ]
+            }
+          ]
+        }
+      });
+      
+      return !!existingMovie;
+    } catch (error) {
+      console.error('Error checking if movie exists in database:', error);
+      return false;
+    }
+  }
+
+  private async isEpisodeInDatabase(fileName: string, filePath: string, seriesName: string, seasonNumber: number, episodeNumber: number): Promise<boolean> {
+    try {
+      // Check if there's an episode with the same file path or file name
+      const existingEpisode = await prisma.episode.findFirst({
+        where: {
+          OR: [
+            { filePath },
+            { fileName },
+            {
+              AND: [
+                { seriesName: { equals: seriesName, mode: 'insensitive' } },
+                { seasonNumber },
+                { episodeNumber }
+              ]
+            }
+          ]
+        }
+      });
+      
+      return !!existingEpisode;
+    } catch (error) {
+      console.error('Error checking if episode exists in database:', error);
+      return false;
     }
   }
 
@@ -30,6 +133,10 @@ class ScannerService {
       try {
         const parsedMovie = parserService.parseMovie(file);
         if (!parsedMovie) continue;
+
+        if (await this.isMovieInDatabase(parsedMovie.fileName, parsedMovie.filePath, parsedMovie.title, parsedMovie.year)) {
+          continue;
+        }
 
         // Search TMDB
         const searchResults = await tmdbService.searchMovie(parsedMovie.title, parsedMovie.year);
@@ -90,6 +197,10 @@ class ScannerService {
       try {
         const parsedEpisode = parserService.parseEpisode(file);
         if (!parsedEpisode) continue;
+
+        if (await this.isEpisodeInDatabase(parsedEpisode.fileName, parsedEpisode.filePath, parsedEpisode.seriesName, parsedEpisode.seasonNumber, parsedEpisode.episodeNumber)) {
+          continue;
+        }
 
         // Search TMDB
         const searchResults = await tmdbService.searchTV(parsedEpisode.seriesName);
@@ -420,6 +531,258 @@ class ScannerService {
       return { message: 'Conflict deleted successfully' };
     } catch (error) {
       console.error('Error deleting conflict:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Checks if a movie file exists on disk
+   * @param filePath The path to the movie file
+   * @returns True if the file exists, false otherwise
+   */
+  private async isFileExistsOnDisk(filePath: string): Promise<boolean> {
+    try {
+      return fs.existsSync(filePath);
+    } catch (error) {
+      console.error(`Error checking if file exists: ${filePath}`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Checks for movies that are in the database but no longer exist on disk
+   * @returns An array of movies that are missing from disk
+   */
+  private async checkForDeletedMovies() {
+    try {
+      // Get all movies from the database
+      const movies = await prisma.movie.findMany({
+        select: {
+          id: true,
+          title: true,
+          year: true,
+          filePath: true,
+          fileName: true
+        }
+      });
+
+      const missingMovies = [];
+
+      // Check each movie to see if the file still exists
+      for (const movie of movies) {
+        if (movie.filePath && !(await this.isFileExistsOnDisk(movie.filePath))) {
+          missingMovies.push(movie);
+        }
+      }
+
+      return missingMovies;
+    } catch (error) {
+      console.error('Error checking for deleted movies:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Checks for episodes that are in the database but no longer exist on disk
+   * @returns An array of episodes that are missing from disk
+   */
+  private async checkForDeletedEpisodes() {
+    try {
+      // Get all episodes from the database
+      const episodes = await prisma.episode.findMany({
+        select: {
+          id: true,
+          title: true,
+          seasonNumber: true,
+          episodeNumber: true,
+          filePath: true,
+          fileName: true,
+          series: {
+            select: {
+              id: true,
+              title: true
+            }
+          }
+        }
+      });
+
+      const missingEpisodes = [];
+
+      // Check each episode to see if the file still exists
+      for (const episode of episodes) {
+        if (episode.filePath && !(await this.isFileExistsOnDisk(episode.filePath))) {
+          missingEpisodes.push(episode);
+        }
+      }
+
+      return missingEpisodes;
+    } catch (error) {
+      console.error('Error checking for deleted episodes:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Removes a movie from the database if it no longer exists on disk
+   * @param movieId The ID of the movie to remove
+   * @returns A success message
+   */
+  private async removeDeletedMovie(movieId: string) {
+    try {
+      const movie = await prisma.movie.findUnique({
+        where: { id: movieId }
+      });
+
+      if (!movie) {
+        throw new Error('Movie not found');
+      }
+
+      // Check if the file exists
+      if (movie.filePath && await this.isFileExistsOnDisk(movie.filePath)) {
+        throw new Error('Movie file still exists on disk');
+      }
+
+      // Delete the movie from the database
+      await prisma.movie.delete({
+        where: { id: movieId }
+      });
+
+      return { message: 'Movie removed successfully' };
+    } catch (error) {
+      console.error('Error removing deleted movie:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Removes an episode from the database if it no longer exists on disk
+   * @param episodeId The ID of the episode to remove
+   * @returns A success message
+   */
+  private async removeDeletedEpisode(episodeId: string) {
+    try {
+      const episode = await prisma.episode.findUnique({
+        where: { id: episodeId }
+      });
+
+      if (!episode) {
+        throw new Error('Episode not found');
+      }
+
+      // Check if the file exists
+      if (episode.filePath && await this.isFileExistsOnDisk(episode.filePath)) {
+        throw new Error('Episode file still exists on disk');
+      }
+
+      // Delete the episode from the database
+      await prisma.episode.delete({
+        where: { id: episodeId }
+      });
+
+      return { message: 'Episode removed successfully' };
+    } catch (error) {
+      console.error('Error removing deleted episode:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Checks for and removes all orphaned media entries from the database
+   * (entries that exist in the database but the files no longer exist on disk)
+   * @param progressCallback Optional callback function to report progress
+   */
+  private async cleanupOrphanedEntries(progressCallback?: ProgressCallback) {
+    try {
+      const reportProgress = (status: string, progress: number, details?: any) => {
+        console.log(`${status}: ${progress}%${details ? ` - ${JSON.stringify(details)}` : ''}`);
+        if (progressCallback) {
+          progressCallback(status, progress, details);
+        }
+      };
+
+      // Check for deleted movies
+      reportProgress('Checking for deleted movies', 80);
+      const missingMovies = await this.checkForDeletedMovies();
+      console.log(`Found ${missingMovies.length} missing movie files`);
+      
+      // Remove each missing movie
+      for (let i = 0; i < missingMovies.length; i++) {
+        const movie = missingMovies[i];
+        try {
+          reportProgress('Removing orphaned movies', 
+            80 + Math.floor((i / missingMovies.length) * 5), 
+            { current: i + 1, total: missingMovies.length, title: movie.title }
+          );
+          
+          await this.removeDeletedMovie(movie.id);  
+          console.log(`Removed orphaned movie: ${movie.title} (${movie.year})`);
+        } catch (error) {
+          console.error(`Failed to remove orphaned movie ${movie.id}:`, error);
+        }
+      }
+      
+      // Check for deleted episodes
+      reportProgress('Checking for deleted episodes', 85);
+      const missingEpisodes = await this.checkForDeletedEpisodes();
+      console.log(`Found ${missingEpisodes.length} missing episode files`);
+      
+      // Remove each missing episode
+      for (let i = 0; i < missingEpisodes.length; i++) {
+        const episode = missingEpisodes[i];
+        try {
+          reportProgress('Removing orphaned episodes', 
+            85 + Math.floor((i / missingEpisodes.length) * 5), 
+            { current: i + 1, total: missingEpisodes.length, title: episode.title }
+          );
+          
+          await this.removeDeletedEpisode(episode.id);
+          console.log(`Removed orphaned episode: ${episode.title} (S${episode.seasonNumber}E${episode.episodeNumber})`);
+        } catch (error) {
+          console.error(`Failed to remove orphaned episode ${episode.id}:`, error);
+        }
+      }
+      
+      // Check for TV series with no episodes
+      reportProgress('Checking for empty TV series', 90);
+      const emptySeries = await prisma.tvSeries.findMany({
+        where: {
+          episodes: {
+            none: {}
+          }
+        },
+        select: {
+          id: true,
+          title: true
+        }
+      });
+      
+      // Remove each empty series
+      for (let i = 0; i < emptySeries.length; i++) {
+        const series = emptySeries[i];
+        try {
+          reportProgress('Removing empty TV series', 
+            90 + Math.floor((i / emptySeries.length) * 5), 
+            { current: i + 1, total: emptySeries.length, title: series.title }
+          );
+          
+          await prisma.tvSeries.delete({
+            where: { id: series.id }
+          });
+          console.log(`Removed empty TV series: ${series.title}`);
+        } catch (error) {
+          console.error(`Failed to remove empty TV series ${series.id}:`, error);
+        }
+      }
+      
+      reportProgress('Cleanup completed', 95);
+      
+      return {
+        removedMovies: missingMovies.length,
+        removedEpisodes: missingEpisodes.length,
+        removedSeries: emptySeries.length
+      };
+    } catch (error) {
+      console.error('Error cleaning up orphaned entries:', error);
       throw error;
     }
   }

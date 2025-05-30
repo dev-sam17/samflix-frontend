@@ -42,6 +42,13 @@ const router = Router();
 
 const scanHandler: AsyncRouteHandler = async (_req, res) => {
   try {
+    // Set headers for SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.flushHeaders();
+
     const folders = await prisma.mediaFolder.findMany({
       select: { id: true, path: true, type: true, active: true },
       where: { active: true }
@@ -57,13 +64,41 @@ const scanHandler: AsyncRouteHandler = async (_req, res) => {
       fileExtensions: ['.mp4', '.mkv', '.avi']
     };
 
-    // Start scanning in the background
-    scannerService.scanAll(config).catch(console.error);
+    // Send initial message
+    res.write(`data: ${JSON.stringify({ status: 'Starting scan', progress: 0 })}\n\n`);
+
+    // Define progress callback
+    const progressCallback = (status: string, progress: number, details?: any) => {
+      const data = JSON.stringify({ status, progress, details });
+      res.write(`data: ${data}\n\n`);
+    };
+
+    // Start scanning with progress reporting
+    const results = await scannerService.scanAll(config, progressCallback);
     
-    res.json({ message: 'Scan started successfully' });
+    // Send final message with results
+    res.write(`data: ${JSON.stringify({ 
+      status: 'Scan completed', 
+      progress: 100, 
+      details: results,
+      complete: true 
+    })}\n\n`);
+    
+    // End the response
+    res.end();
   } catch (error) {
-    console.error('Error starting scan:', error);
-    res.status(500).json({ error: 'Failed to start scan' });
+    console.error('Error during scan:', error);
+    // Try to send error to client if connection is still open
+    try {
+      res.write(`data: ${JSON.stringify({ 
+        status: 'Error', 
+        error: 'Failed to complete scan',
+        complete: true
+      })}\n\n`);
+      res.end();
+    } catch (e) {
+      console.error('Failed to send error to client:', e);
+    }
   }
 };
 
