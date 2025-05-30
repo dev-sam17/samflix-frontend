@@ -536,6 +536,128 @@ class ScannerService {
   }
 
   /**
+   * Deletes all unresolved scanning conflicts from the database
+   * @returns A success message with the count of deleted conflicts
+   */
+  async deleteAllConflicts() {
+    try {
+      // Delete all unresolved conflicts
+      const result = await prisma.scanningConflict.deleteMany({
+        where: { resolved: false }
+      });
+
+      return { 
+        message: 'All conflicts deleted successfully',
+        count: result.count
+      };
+    } catch (error) {
+      console.error('Error deleting all conflicts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Checks for and removes all orphaned media entries from the database
+   * (entries that exist in the database but the files no longer exist on disk)
+   * @param progressCallback Optional callback function to report progress
+   */
+  private async cleanupOrphanedEntries(progressCallback?: ProgressCallback) {
+    try {
+      const reportProgress = (status: string, progress: number, details?: any) => {
+        console.log(`${status}: ${progress}%${details ? ` - ${JSON.stringify(details)}` : ''}`);
+        if (progressCallback) {
+          progressCallback(status, progress, details);
+        }
+      };
+
+      // Check for deleted movies
+      reportProgress('Checking for deleted movies', 80);
+      const missingMovies = await this.checkForDeletedMovies();
+      console.log(`Found ${missingMovies.length} missing movie files`);
+      
+      // Remove each missing movie
+      for (let i = 0; i < missingMovies.length; i++) {
+        const movie = missingMovies[i];
+        try {
+          reportProgress('Removing orphaned movies', 
+            80 + Math.floor((i / missingMovies.length) * 5), 
+            { current: i + 1, total: missingMovies.length, title: movie.title }
+          );
+          
+          await this.removeDeletedMovie(movie.id);  
+          console.log(`Removed orphaned movie: ${movie.title} (${movie.year})`);
+        } catch (error) {
+          console.error(`Failed to remove orphaned movie ${movie.id}:`, error);
+        }
+      }
+      
+      // Check for deleted episodes
+      reportProgress('Checking for deleted episodes', 85);
+      const missingEpisodes = await this.checkForDeletedEpisodes();
+      console.log(`Found ${missingEpisodes.length} missing episode files`);
+      
+      // Remove each missing episode
+      for (let i = 0; i < missingEpisodes.length; i++) {
+        const episode = missingEpisodes[i];
+        try {
+          reportProgress('Removing orphaned episodes', 
+            85 + Math.floor((i / missingEpisodes.length) * 5), 
+            { current: i + 1, total: missingEpisodes.length, title: episode.title }
+          );
+          
+          await this.removeDeletedEpisode(episode.id);
+          console.log(`Removed orphaned episode: ${episode.title} (S${episode.seasonNumber}E${episode.episodeNumber})`);
+        } catch (error) {
+          console.error(`Failed to remove orphaned episode ${episode.id}:`, error);
+        }
+      }
+      
+      // Check for TV series with no episodes
+      reportProgress('Checking for empty TV series', 90);
+      const emptySeries = await prisma.tvSeries.findMany({
+        where: {
+          episodes: {
+            none: {}
+          }
+        },
+        select: {
+          id: true,
+          title: true
+        }
+      });
+      
+      // Remove each empty series
+      for (let i = 0; i < emptySeries.length; i++) {
+        const series = emptySeries[i];
+        try {
+          reportProgress('Removing empty TV series', 
+            90 + Math.floor((i / emptySeries.length) * 5), 
+            { current: i + 1, total: emptySeries.length, title: series.title }
+          );
+          
+          await prisma.tvSeries.delete({
+            where: { id: series.id }
+          });
+          console.log(`Removed empty TV series: ${series.title}`);
+        } catch (error) {
+          console.error(`Failed to remove empty TV series ${series.id}:`, error);
+        }
+      }
+      
+      reportProgress('Cleanup completed', 95);
+      
+      return {
+        removedMovies: missingMovies.length,
+        removedEpisodes: missingEpisodes.length,
+        removedSeries: emptySeries.length
+      };
+    } catch (error) {
+      console.error('Error cleaning up orphaned entries:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Checks if a movie file exists on disk
    * @param filePath The path to the movie file
    * @returns True if the file exists, false otherwise
@@ -682,107 +804,6 @@ class ScannerService {
       return { message: 'Episode removed successfully' };
     } catch (error) {
       console.error('Error removing deleted episode:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Checks for and removes all orphaned media entries from the database
-   * (entries that exist in the database but the files no longer exist on disk)
-   * @param progressCallback Optional callback function to report progress
-   */
-  private async cleanupOrphanedEntries(progressCallback?: ProgressCallback) {
-    try {
-      const reportProgress = (status: string, progress: number, details?: any) => {
-        console.log(`${status}: ${progress}%${details ? ` - ${JSON.stringify(details)}` : ''}`);
-        if (progressCallback) {
-          progressCallback(status, progress, details);
-        }
-      };
-
-      // Check for deleted movies
-      reportProgress('Checking for deleted movies', 80);
-      const missingMovies = await this.checkForDeletedMovies();
-      console.log(`Found ${missingMovies.length} missing movie files`);
-      
-      // Remove each missing movie
-      for (let i = 0; i < missingMovies.length; i++) {
-        const movie = missingMovies[i];
-        try {
-          reportProgress('Removing orphaned movies', 
-            80 + Math.floor((i / missingMovies.length) * 5), 
-            { current: i + 1, total: missingMovies.length, title: movie.title }
-          );
-          
-          await this.removeDeletedMovie(movie.id);  
-          console.log(`Removed orphaned movie: ${movie.title} (${movie.year})`);
-        } catch (error) {
-          console.error(`Failed to remove orphaned movie ${movie.id}:`, error);
-        }
-      }
-      
-      // Check for deleted episodes
-      reportProgress('Checking for deleted episodes', 85);
-      const missingEpisodes = await this.checkForDeletedEpisodes();
-      console.log(`Found ${missingEpisodes.length} missing episode files`);
-      
-      // Remove each missing episode
-      for (let i = 0; i < missingEpisodes.length; i++) {
-        const episode = missingEpisodes[i];
-        try {
-          reportProgress('Removing orphaned episodes', 
-            85 + Math.floor((i / missingEpisodes.length) * 5), 
-            { current: i + 1, total: missingEpisodes.length, title: episode.title }
-          );
-          
-          await this.removeDeletedEpisode(episode.id);
-          console.log(`Removed orphaned episode: ${episode.title} (S${episode.seasonNumber}E${episode.episodeNumber})`);
-        } catch (error) {
-          console.error(`Failed to remove orphaned episode ${episode.id}:`, error);
-        }
-      }
-      
-      // Check for TV series with no episodes
-      reportProgress('Checking for empty TV series', 90);
-      const emptySeries = await prisma.tvSeries.findMany({
-        where: {
-          episodes: {
-            none: {}
-          }
-        },
-        select: {
-          id: true,
-          title: true
-        }
-      });
-      
-      // Remove each empty series
-      for (let i = 0; i < emptySeries.length; i++) {
-        const series = emptySeries[i];
-        try {
-          reportProgress('Removing empty TV series', 
-            90 + Math.floor((i / emptySeries.length) * 5), 
-            { current: i + 1, total: emptySeries.length, title: series.title }
-          );
-          
-          await prisma.tvSeries.delete({
-            where: { id: series.id }
-          });
-          console.log(`Removed empty TV series: ${series.title}`);
-        } catch (error) {
-          console.error(`Failed to remove empty TV series ${series.id}:`, error);
-        }
-      }
-      
-      reportProgress('Cleanup completed', 95);
-      
-      return {
-        removedMovies: missingMovies.length,
-        removedEpisodes: missingEpisodes.length,
-        removedSeries: emptySeries.length
-      };
-    } catch (error) {
-      console.error('Error cleaning up orphaned entries:', error);
       throw error;
     }
   }

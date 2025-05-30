@@ -221,6 +221,17 @@ const deleteConflictHandler: AsyncRouteHandler<{ id: string }> = async (req, res
   }
 };
 
+// Delete all scanning conflicts
+const deleteAllConflictsHandler: AsyncRouteHandler = async (_req, res) => {
+  try {
+    const result = await scannerService.deleteAllConflicts();
+    res.json(result);
+  } catch (error) {
+    console.error('Error deleting all conflicts:', error);
+    res.status(500).json({ error: 'Failed to delete all conflicts' });
+  }
+};
+
 router.get('/scan', scanHandler);
 router.post('/folders', addFolderHandler);
 router.get('/folders', getFoldersHandler);
@@ -229,5 +240,6 @@ router.delete('/folders/:id', deleteFolderHandler);
 router.get('/conflicts', getConflictsHandler);
 router.post('/conflicts/:id/resolve', resolveConflictHandler);
 router.delete('/conflicts/:id', deleteConflictHandler);
+router.delete('/conflicts', deleteAllConflictsHandler);
 
 export default router;
