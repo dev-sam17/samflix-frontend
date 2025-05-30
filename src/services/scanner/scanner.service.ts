@@ -395,6 +395,34 @@ class ScannerService {
       throw error;
     }
   }
+
+  /**
+   * Deletes a scanning conflict from the database
+   * @param conflictId The ID of the conflict to delete
+   * @returns A success message
+   */
+  async deleteConflict(conflictId: string) {
+    try {
+      // Check if the conflict exists
+      const conflict = await prisma.scanningConflict.findUnique({
+        where: { id: conflictId }
+      });
+
+      if (!conflict) {
+        throw new Error('Conflict not found');
+      }
+
+      // Delete the conflict
+      await prisma.scanningConflict.delete({
+        where: { id: conflictId }
+      });
+
+      return { message: 'Conflict deleted successfully' };
+    } catch (error) {
+      console.error('Error deleting conflict:', error);
+      throw error;
+    }
+  }
 }
 
 export const scannerService = new ScannerService();

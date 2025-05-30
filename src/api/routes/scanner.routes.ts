@@ -171,6 +171,21 @@ const resolveConflictHandler: AsyncRouteHandler<ResolveConflictParams, any, Reso
   }
 };
 
+// Delete scanning conflict
+const deleteConflictHandler: AsyncRouteHandler<{ id: string }> = async (req, res) => {
+  try {
+    const result = await scannerService.deleteConflict(req.params.id);
+    res.json(result);
+  } catch (error) {
+    console.error('Error deleting conflict:', error);
+    if (error.message === 'Conflict not found') {
+      res.status(404).json({ error: 'Conflict not found' });
+    } else {
+      res.status(500).json({ error: 'Failed to delete conflict' });
+    }
+  }
+};
+
 router.post('/scan', scanHandler);
 router.post('/folders', addFolderHandler);
 router.get('/folders', getFoldersHandler);
@@ -178,5 +193,6 @@ router.patch('/folders/:id', updateFolderHandler);
 router.delete('/folders/:id', deleteFolderHandler);
 router.get('/conflicts', getConflictsHandler);
 router.post('/conflicts/:id/resolve', resolveConflictHandler);
+router.delete('/conflicts/:id', deleteConflictHandler);
 
 export default router;
