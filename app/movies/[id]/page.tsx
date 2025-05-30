@@ -206,7 +206,7 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Movie Not Found</h1>
-          <p className="text-gray-400 mb-6">The movie you're looking for doesn't exist.</p>
+          <p className="text-gray-400 mb-6">The movie you&apos;re looking for doesn&apos;t exist.</p>
           <Link href="/movies">
             <Button className="bg-red-600 hover:bg-red-700">
               <ArrowLeft className="w-4 h-4 mr-2" />
