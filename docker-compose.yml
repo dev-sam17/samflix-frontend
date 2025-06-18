@@ -13,7 +13,7 @@ services:
       - 1.1.1.1
       - 1.0.0.1
     volumes:
-    # add your own media paths here
+      # add your own media paths here
       - "/media/Storage3/Movies/Anime Movies:/media/movies/anime"
       - "/media/Storage3/Movies/Bollywood:/media/movies/bollywood"
       - "/media/Storage3/Movies/Hollywood:/media/movies/hollywood"
