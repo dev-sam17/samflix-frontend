@@ -19,21 +19,24 @@ jobs:
           registry-url: "https://npm.pkg.github.com/"
           scope: "@dev-sam17"
 
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install
 
       - name: Generate Prisma client
-        run: npm run generate
+        run: pnpm run generate
 
       - name: Push schema to Dev MongoDB
-        run: npx prisma db push
+        run: pnpm prisma db push
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Build TypeScript package
-        run: npm run build
+        run: pnpm run build
 
       - name: Publish package to GitHub Packages
-        run: npm publish
+        run: pnpm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.TOKEN_GITHUB }}
