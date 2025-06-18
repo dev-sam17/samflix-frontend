@@ -3,5 +3,7 @@
 .env.test
 .env.development
 
+.npmrc
+
 node_modules
 dist

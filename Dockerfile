@@ -9,7 +9,11 @@ RUN npm install -g pnpm
 # Create app directory
 WORKDIR /app
 
+# Set GITHUB_TOKEN environment variable
+ARG GITHUB_TOKEN
+
 # Install dependencies first (for better caching)
+RUN echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> ~/.npmrc
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install
 
