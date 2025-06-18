@@ -2,7 +2,7 @@ name: Build & Deploy Prisma to Dev
 
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 jobs:
   build-push-publish:
