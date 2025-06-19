@@ -3,7 +3,7 @@
 generator client {
   provider      = "prisma-client-js"
   output        = "../prisma/generated"
-  binaryTargets = ["native", "windows", "debian-openssl-1.1.x", "debian-openssl-3.0.x", "linux-musl", "linux-arm64-openssl-1.1.x", "linux-arm64-openssl-3.0.x", "rhel-openssl-1.0.x", "rhel-openssl-1.1.x", "rhel-openssl-3.0.x", "darwin", "darwin-arm64"]
+  binaryTargets = ["native", "windows", "debian-openssl-1.1.x", "debian-openssl-3.0.x", "linux-musl", "linux-arm64-openssl-1.1.x", "linux-arm64-openssl-3.0.x", "darwin-arm64"]
 }
 
 datasource db {
@@ -30,6 +30,7 @@ model Movie {
   runtime         Int?
   rating          Float?
   transcodeStatus TranscodeStatus @default(PENDING)
+  playPath        String          @default("")
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -68,6 +69,7 @@ model Episode {
   series          TvSeries        @relation(fields: [seriesId], references: [id])
   seriesId        String          @db.ObjectId
   transcodeStatus TranscodeStatus @default(PENDING)
+  playPath        String          @default("")
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
