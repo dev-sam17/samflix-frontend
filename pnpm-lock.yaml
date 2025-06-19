@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@dev-sam17/prisma-client-for-samflix':
-        specifier: ^0.1.3
-        version: 0.1.3(typescript@5.8.3)
+        specifier: ^0.1.4
+        version: 0.1.4(typescript@5.8.3)
       '@types/express':
         specifier: ^5.0.2
         version: 5.0.2
@@ -67,8 +67,8 @@ packages:
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
     engines: {node: '>=12'}
 
-  '@dev-sam17/prisma-client-for-samflix@0.1.3':
-    resolution: {integrity: sha512-SPsMwBxdzQlWFd5D0AmSM++ZGIVtUnP//wmzlDp1LnvqIhYHMDW67GxV2TYjySNxJ0UOzChnS9jhpOdPu3OYyw==, tarball: https://npm.pkg.github.com/download/@dev-sam17/prisma-client-for-samflix/0.1.3/68bf4283faa8434adc07a5fff9c4f9e12464fb4e}
+  '@dev-sam17/prisma-client-for-samflix@0.1.4':
+    resolution: {integrity: sha512-wq5wfXH8aAdu/KgtBFav+kpQi1qB2kWWxJMqRCOD4eoxcZ8ukkgjaUG3a49C8zqfE63n3oqFBBIK5HM9C9/0BA==, tarball: https://npm.pkg.github.com/download/@dev-sam17/prisma-client-for-samflix/0.1.4/b4a32e9e6278d4c510f78291e568ad90cc01b7ab}
 
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
@@ -698,7 +698,7 @@ snapshots:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
 
-  '@dev-sam17/prisma-client-for-samflix@0.1.3(typescript@5.8.3)':
+  '@dev-sam17/prisma-client-for-samflix@0.1.4(typescript@5.8.3)':
     dependencies:
       '@prisma/client': 6.10.0(typescript@5.8.3)
     transitivePeerDependencies:
