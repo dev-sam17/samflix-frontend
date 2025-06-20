@@ -13,6 +13,17 @@ class StreamController {
    */
   streamMovieHLS: AsyncRequestHandler = async (req, res) => {
     try {
+      // Set CORS headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+
+      // Handle preflight requests
+      if (req.method === "OPTIONS") {
+        res.status(204).end();
+        return;
+      }
+
       const { id } = req.params;
 
       const movie = await prisma.movie.findUnique({
@@ -39,7 +50,6 @@ class StreamController {
 
       // Set appropriate headers for m3u8 file
       res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-      res.setHeader("Access-Control-Allow-Origin", "*");
 
       // Stream the master playlist file
       fs.createReadStream(movie.playPath).pipe(res);
@@ -54,6 +64,17 @@ class StreamController {
    */
   serveMovieSegment: AsyncRequestHandler = async (req, res) => {
     try {
+      // Set CORS headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+
+      // Handle preflight requests
+      if (req.method === "OPTIONS") {
+        res.status(204).end();
+        return;
+      }
+
       const { id, filename } = req.params;
 
       const movie = await prisma.movie.findUnique({
@@ -92,8 +113,6 @@ class StreamController {
         res.setHeader("Content-Type", "application/octet-stream");
       }
 
-      res.setHeader("Access-Control-Allow-Origin", "*");
-
       // Stream the segment file
       fs.createReadStream(segmentPath).pipe(res);
     } catch (error) {
@@ -108,6 +127,17 @@ class StreamController {
    */
   streamEpisodeHLS: AsyncRequestHandler = async (req, res) => {
     try {
+      // Set CORS headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+
+      // Handle preflight requests
+      if (req.method === "OPTIONS") {
+        res.status(204).end();
+        return;
+      }
+
       const { id } = req.params;
 
       const episode = await prisma.episode.findUnique({
@@ -134,7 +164,6 @@ class StreamController {
 
       // Set appropriate headers for m3u8 file
       res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-      res.setHeader("Access-Control-Allow-Origin", "*");
 
       // Stream the master playlist file
       fs.createReadStream(episode.playPath).pipe(res);
@@ -149,6 +178,17 @@ class StreamController {
    */
   serveEpisodeSegment: AsyncRequestHandler = async (req, res) => {
     try {
+      // Set CORS headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+
+      // Handle preflight requests
+      if (req.method === "OPTIONS") {
+        res.status(204).end();
+        return;
+      }
+
       const { id, filename } = req.params;
 
       const episode = await prisma.episode.findUnique({
@@ -187,8 +227,6 @@ class StreamController {
         res.setHeader("Content-Type", "application/octet-stream");
       }
 
-      res.setHeader("Access-Control-Allow-Origin", "*");
-
       // Stream the segment file
       fs.createReadStream(segmentPath).pipe(res);
     } catch (error) {
@@ -203,6 +241,17 @@ class StreamController {
    */
   downloadMovie: AsyncRequestHandler = async (req, res) => {
     try {
+      // Set CORS headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+
+      // Handle preflight requests
+      if (req.method === "OPTIONS") {
+        res.status(204).end();
+        return;
+      }
+
       const { id } = req.params;
 
       const movie = await prisma.movie.findUnique({
@@ -251,6 +300,9 @@ class StreamController {
           "Content-Length": chunkSize,
           "Content-Type": "video/mp4",
           "Content-Disposition": `attachment; filename="${fileName}"`,
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Range",
         });
 
         file.pipe(res);
@@ -260,6 +312,9 @@ class StreamController {
           "Content-Length": fileSize,
           "Content-Type": "video/mp4",
           "Content-Disposition": `attachment; filename="${fileName}"`,
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Range",
         });
 
         fs.createReadStream(filePath).pipe(res);
@@ -276,6 +331,17 @@ class StreamController {
    */
   downloadEpisode: AsyncRequestHandler = async (req, res) => {
     try {
+      // Set CORS headers
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+
+      // Handle preflight requests
+      if (req.method === "OPTIONS") {
+        res.status(204).end();
+        return;
+      }
+
       const { id } = req.params;
 
       const episode = await prisma.episode.findUnique({
@@ -324,6 +390,9 @@ class StreamController {
           "Content-Length": chunkSize,
           "Content-Type": "video/mp4",
           "Content-Disposition": `attachment; filename="${fileName}"`,
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Range",
         });
 
         file.pipe(res);
@@ -333,6 +402,9 @@ class StreamController {
           "Content-Length": fileSize,
           "Content-Type": "video/mp4",
           "Content-Disposition": `attachment; filename="${fileName}"`,
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Range",
         });
 
         fs.createReadStream(filePath).pipe(res);
