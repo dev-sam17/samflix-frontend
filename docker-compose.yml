@@ -26,6 +26,6 @@ services:
       - "/media/Storage3/Web Series/K Drama:/media/series/k-drama"
       - "/media/Storage3/Web Series/Web Series - English:/media/series/english"
       - "/media/Storage3/Web Series/Web Series - Hindi:/media/series/hindi"
-      - "/media/Storage3/test-movies:/media/movies/test"
-      - "/media/Storage3/test-series:/media/series/test"
+      - "/media/Storage3/Movies/test-movies:/media/movies/test"
+      - "/media/Storage3/Web Series/test-series:/media/series/test"
     restart: unless-stopped
