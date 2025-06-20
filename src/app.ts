@@ -10,6 +10,7 @@ dotenv.config({ path: ".env" });
 import movieRoutes from "./api/routes/movie.routes";
 import seriesRoutes from "./api/routes/series.routes";
 import scannerRoutes from "./api/routes/scanner.routes";
+import streamRoutes from "./api/routes/stream.routes";
 
 // Create Express app
 const app = express();
@@ -28,6 +29,7 @@ app.use(morgan("dev"));
 app.use("/api/movies", movieRoutes);
 app.use("/api/series", seriesRoutes);
 app.use("/api/scanner", scannerRoutes);
+app.use("/api/stream", streamRoutes);
 
 // Health check endpoint
 app.get("/health", (_, res) => {
