@@ -32,10 +32,10 @@ class StreamController {
       }
 
       // Check if the file exists
-      if (!fs.existsSync(movie.playPath)) {
-        res.status(404).json({ error: "HLS playlist file not found" });
-        return;
-      }
+      //   if (!fs.existsSync(movie.playPath)) {
+      //     res.status(404).json({ error: "HLS playlist file not found" });
+      //     return;
+      //   }
 
       // Set appropriate headers for m3u8 file
       res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
