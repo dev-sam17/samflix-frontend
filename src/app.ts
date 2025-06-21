@@ -31,6 +31,25 @@ app.use("/api/series", seriesRoutes);
 app.use("/api/scanner", scannerRoutes);
 app.use("/api/stream", streamRoutes);
 
+// Serve media folder as static content
+// In Docker container, media folder is one level up from the project root
+app.use(
+  "/media",
+  express.static("/media", {
+    setHeaders: (res, path) => {
+      // Set CORS headers for all static media files
+      res.setHeader("Access-Control-Allow-Origin", "*");
+
+      // Set appropriate content type headers based on file extension
+      if (path.endsWith(".m3u8")) {
+        res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+      } else if (path.endsWith(".ts")) {
+        res.setHeader("Content-Type", "video/mp2t");
+      }
+    },
+  })
+);
+
 // Health check endpoint
 app.get("/health", (_, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
