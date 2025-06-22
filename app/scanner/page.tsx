@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { Scan, FolderPlus, Folder, AlertTriangle, CheckCircle, XCircle, Trash2, Settings, Activity } from "lucide-react"
+import { Scan, FolderPlus, Folder, AlertTriangle, CheckCircle, XCircle, Trash2, Settings, Activity, Star } from "lucide-react"
 import Link from "next/link"
 import { api, type MediaFolder, type ScanningConflict } from "@/lib/api"
 import { useApi, useMutation } from "@/hooks/use-api"
@@ -159,11 +159,32 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
           Resolve
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+      <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Resolve Scanning Conflict</DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Select the correct match for this file to resolve the conflict
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        
+        <div className="flex gap-2 px-6 py-2 border-b border-gray-800">
+          <Button
+            onClick={handleResolve}
+            disabled={!selectedMatch || loading}
+            className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50"
+          >
+            {loading ? "Resolving..." : "Resolve Conflict"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            className="flex-1 border-gray-600 text-gray-300 hover:bg-white/10"
+          >
+            Cancel
+          </Button>
+        </div>
+        
+        <div className="space-y-4 overflow-y-auto flex-1 pr-2 p-6 pt-4">
           <div>
             <Label className="text-sm text-gray-400">File Name</Label>
             <code className="block text-sm bg-gray-800 p-2 rounded text-green-400 break-all">{conflict.fileName}</code>
@@ -171,27 +192,57 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
 
           <div>
             <Label className="text-sm text-gray-400 mb-3 block">Select Correct Match</Label>
-            <div className="space-y-2 overflow-y-scroll max-h-[400px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {conflict.possibleMatches.map((match: any) => (
                 <Card
                   key={match.id}
-                  className={`cursor-pointer transition-colors ${
+                  className={`cursor-pointer transition-colors h-full ${
                     selectedMatch === match.id.toString()
                       ? "bg-red-600/20 border-red-500"
                       : "bg-gray-800 border-gray-700 hover:border-gray-600"
                   }`}
                   onClick={() => setSelectedMatch(match.id.toString())}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-semibold text-white">{match.title}</h4>
-                        <p className="text-sm text-gray-400">({match.year})</p>
-                        <p className="text-sm text-gray-300 mt-1 line-clamp-2">{match.overview}</p>
+                  <CardContent className="p-0 flex flex-col h-full">
+                    <div className="flex flex-col md:flex-row h-full">
+                      <div className="w-full md:w-1/3 relative">
+                        {match.poster_path ? (
+                          <img 
+                            src={`https://image.tmdb.org/t/p/w300${match.poster_path}`} 
+                            alt={match.title}
+                            className="h-[200px] md:h-full w-full object-cover rounded-t-lg md:rounded-l-lg md:rounded-t-none"
+                          />
+                        ) : (
+                          <div className="h-[200px] md:h-full w-full bg-gray-700 flex items-center justify-center rounded-t-lg md:rounded-l-lg md:rounded-t-none">
+                            <span className="text-gray-400">No poster</span>
+                          </div>
+                        )}
+                        {selectedMatch === match.id.toString() && (
+                          <div className="absolute top-2 right-2">
+                            <Badge className="bg-red-600">Selected</Badge>
+                          </div>
+                        )}
                       </div>
-                      <Badge variant="outline" className="border-gray-600 text-gray-300">
-                        ID: {match.id}
-                      </Badge>
+                      <div className="p-4 flex-1 flex flex-col">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-semibold text-white text-lg">{match.title}</h4>
+                            <p className="text-sm text-gray-400">Released: {match.release_date || match.year || 'Unknown'}</p>
+                          </div>
+                          <Badge variant="outline" className="border-gray-600 text-gray-300">
+                            ID: {match.id}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-300 mt-1 flex-grow line-clamp-4 md:line-clamp-6">{match.overview}</p>
+                        <div className="mt-2 pt-2 border-t border-gray-700">
+                          {match.vote_average &&  (
+                            <div className="flex items-center gap-1">
+                              <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                              <span className="text-sm text-gray-300">{match.vote_average.toFixed(1)}/10</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
