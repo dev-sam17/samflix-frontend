@@ -1,29 +1,44 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect, useCallback, Suspense } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Filter, Grid, List, Star, Clock } from "lucide-react"
-import Link from "next/link"
-import Image from "next/image"
-import { api, type Movie } from "@/lib/api"
-import { useApi } from "@/hooks/use-api"
+import type React from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Filter, Grid, List, Star, Clock } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import { api } from "@/lib/api";
+import type { Movie } from "@/lib/types";
+import { useApi } from "@/hooks/use-api";
+import { useApiWithContext } from "@/hooks/use-api-with-context";
+import { useApiUrl } from "@/contexts/api-url-context";
 
 type MovieParams = {
-  page: number
-  limit: number
-  sortBy: string
-  sortOrder: "asc" | "desc"
-  search?: string
-  genre?: string
-}
+  page: number;
+  limit: number;
+  sortBy: string;
+  sortOrder: "asc" | "desc";
+  search?: string;
+  genre?: string;
+};
 
 // This can be a server component since it's just presentational
-function MovieCard({ movie, viewMode }: { movie: Movie; viewMode: "grid" | "list" }) {
+function MovieCard({
+  movie,
+  viewMode,
+}: {
+  movie: Movie;
+  viewMode: "grid" | "list";
+}) {
   if (viewMode === "list") {
     return (
       <Card className="bg-gray-900/50 border-gray-800 hover:border-gray-600 transition-all duration-300 hover:bg-gray-800/50">
@@ -40,7 +55,9 @@ function MovieCard({ movie, viewMode }: { movie: Movie; viewMode: "grid" | "list
             <div className="flex-1 p-4">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-1">{movie.title}</h3>
+                  <h3 className="text-lg font-semibold text-white mb-1">
+                    {movie.title}
+                  </h3>
                   <div className="flex items-center gap-4 text-sm text-gray-400 mb-2">
                     <span>{movie.year}</span>
                     {movie.runtime && (
@@ -59,12 +76,18 @@ function MovieCard({ movie, viewMode }: { movie: Movie; viewMode: "grid" | "list
                 </div>
                 <div className="flex gap-2">
                   {movie.quality && (
-                    <Badge variant="secondary" className="bg-green-600 text-white">
+                    <Badge
+                      variant="secondary"
+                      className="bg-green-600 text-white"
+                    >
                       {movie.quality}
                     </Badge>
                   )}
                   {movie.resolution && (
-                    <Badge variant="outline" className="border-gray-600 text-gray-300">
+                    <Badge
+                      variant="outline"
+                      className="border-gray-600 text-gray-300"
+                    >
                       {movie.resolution}
                     </Badge>
                   )}
@@ -72,17 +95,23 @@ function MovieCard({ movie, viewMode }: { movie: Movie; viewMode: "grid" | "list
               </div>
               <div className="flex gap-2 mb-3">
                 {movie.genres.map((genre: string) => (
-                  <Badge key={genre} variant="outline" className="text-xs border-gray-600 text-gray-300">
+                  <Badge
+                    key={genre}
+                    variant="outline"
+                    className="text-xs border-gray-600 text-gray-300"
+                  >
                     {genre}
                   </Badge>
                 ))}
               </div>
-              <p className="text-gray-400 text-sm line-clamp-2">{movie.overview}</p>
+              <p className="text-gray-400 text-sm line-clamp-2">
+                {movie.overview}
+              </p>
             </div>
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -114,7 +143,9 @@ function MovieCard({ movie, viewMode }: { movie: Movie; viewMode: "grid" | "list
         </div>
 
         <CardContent className="p-4">
-          <h3 className="font-semibold text-white mb-2 line-clamp-1">{movie.title}</h3>
+          <h3 className="font-semibold text-white mb-2 line-clamp-1">
+            {movie.title}
+          </h3>
           <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
             <span>{movie.year}</span>
             {movie.runtime && (
@@ -126,7 +157,11 @@ function MovieCard({ movie, viewMode }: { movie: Movie; viewMode: "grid" | "list
           </div>
           <div className="flex gap-1 flex-wrap">
             {movie.genres.slice(0, 2).map((genre: string) => (
-              <Badge key={genre} variant="outline" className="text-xs border-gray-600 text-gray-300">
+              <Badge
+                key={genre}
+                variant="outline"
+                className="text-xs border-gray-600 text-gray-300"
+              >
                 {genre}
               </Badge>
             ))}
@@ -134,7 +169,7 @@ function MovieCard({ movie, viewMode }: { movie: Movie; viewMode: "grid" | "list
         </CardContent>
       </Card>
     </Link>
-  )
+  );
 }
 
 // This can be a server component since it's just presentational
@@ -146,7 +181,7 @@ function LoadingGrid({ viewMode }: { viewMode: "grid" | "list" }) {
           <div key={i} className="animate-pulse bg-gray-800 h-36 rounded-lg" />
         ))}
       </div>
-    )
+    );
   }
 
   return (
@@ -159,7 +194,7 @@ function LoadingGrid({ viewMode }: { viewMode: "grid" | "list" }) {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export default function MoviesPage() {
@@ -168,66 +203,58 @@ export default function MoviesPage() {
     limit: 24,
     sortBy: "createdAt",
     sortOrder: "desc",
-  })
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedGenre, setSelectedGenre] = useState("all")
+  });
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("all");
+  const { apiBaseUrl } = useApiUrl();
+
+  // Debug output
+  console.log("Movies page - API URL:", apiBaseUrl);
 
   // Use the new client API for real-time data
-  const { data: moviesData, loading: moviesLoading } = useApi(
-    () => api.client.movies.getAll({ ...params, search: searchQuery, genre: selectedGenre !== "all" ? selectedGenre : undefined }),
+  const {
+    data: moviesData,
+    loading: moviesLoading,
+    error,
+  } = useApiWithContext(
+    (baseUrl) => () =>
+      api.client.movies.getAll({
+        baseUrl,
+        ...params,
+        search: searchQuery,
+        genre: selectedGenre !== "all" ? selectedGenre : undefined,
+      }),
     [params, searchQuery, selectedGenre]
-  )
+  );
 
-  const { data: genres } = useApi(() => api.client.movies.getGenres(), [])
+  const { data: genres } = useApiWithContext(
+    (baseUrl) => () => api.client.movies.getGenres(baseUrl),
+    []
+  );
 
   const handleLoadMore = useCallback(() => {
-    setParams((prev) => ({ ...prev, page: prev.page + 1 }))
-  }, [])
+    setParams((prev) => ({ ...prev, page: prev.page + 1 }));
+  }, []);
 
   const handleSearch = useCallback((value: string) => {
-    setParams((prev) => ({ ...prev, page: 1 }))
-    setSearchQuery(value)
-  }, [])
+    setParams((prev) => ({ ...prev, page: 1 }));
+    setSearchQuery(value);
+  }, []);
 
   const handleGenreChange = useCallback((value: string) => {
-    setParams((prev) => ({ ...prev, page: 1 }))
-    setSelectedGenre(value)
-  }, [])
+    setParams((prev) => ({ ...prev, page: 1 }));
+    setSelectedGenre(value);
+  }, []);
 
   const handleSortChange = useCallback((value: string) => {
-    setParams((prev) => ({ ...prev, page: 1, sortBy: value }))
-  }, [])
+    setParams((prev) => ({ ...prev, page: 1, sortBy: value }));
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-800">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-red-500">
-              Samflix
-            </Link>
-            <div className="flex items-center gap-6">
-              <Link href="/movies" className="text-red-400">
-                Movies
-              </Link>
-              <Link href="/series" className="hover:text-red-400 transition-colors">
-                TV Series
-              </Link>
-              <Link href="/genres" className="hover:text-red-400 transition-colors">
-                Genres
-              </Link>
-              <Link href="/scanner" className="hover:text-red-400 transition-colors">
-                Scanner
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
+      {/* Filters */}
       <div className="container mx-auto px-4 py-8">
-        {/* Filters */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
@@ -272,7 +299,11 @@ export default function MoviesPage() {
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setViewMode("grid")}
-                className={viewMode === "grid" ? "bg-red-600 hover:bg-red-700" : "border-gray-600 hover:bg-white/10"}
+                className={
+                  viewMode === "grid"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "border-gray-600 hover:bg-white/10"
+                }
               >
                 <Grid className="w-4 h-4" />
               </Button>
@@ -280,22 +311,30 @@ export default function MoviesPage() {
                 variant={viewMode === "list" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setViewMode("list")}
-                className={viewMode === "list" ? "bg-red-600 hover:bg-red-700" : "border-gray-600 hover:bg-white/10"}
+                className={
+                  viewMode === "list"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "border-gray-600 hover:bg-white/10"
+                }
               >
                 <List className="w-4 h-4" />
               </Button>
             </div>
           </div>
-        </div> 
+        </div>
 
         {/* Results Count */}
         <div className="mb-6">
           <p className="text-gray-400">
             {moviesData?.meta ? (
               <>
-                Showing {(moviesData.meta.page - 1) * moviesData.meta.limit + 1} -{" "}
-                {Math.min(moviesData.meta.page * moviesData.meta.limit, moviesData.meta.total)} of{" "}
-                {moviesData.meta.total} movies
+                Showing {(moviesData.meta.page - 1) * moviesData.meta.limit + 1}{" "}
+                -{" "}
+                {Math.min(
+                  moviesData.meta.page * moviesData.meta.limit,
+                  moviesData.meta.total
+                )}{" "}
+                of {moviesData.meta.total} movies
               </>
             ) : (
               "Loading movies..."
@@ -308,27 +347,40 @@ export default function MoviesPage() {
           <LoadingGrid viewMode={viewMode} />
         ) : moviesData?.data.length ? (
           <>
-            <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6" : "space-y-4"}>
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6"
+                  : "space-y-4"
+              }
+            >
               {moviesData.data.map((movie) => (
                 <MovieCard key={movie.id} movie={movie} viewMode={viewMode} />
               ))}
             </div>
 
             {/* Load More Button */}
-            {moviesData.meta && moviesData.meta.page < moviesData.meta.totalPages && (
-              <div className="mt-8 text-center">
-                <Button onClick={handleLoadMore} className="bg-red-600 hover:bg-red-700" disabled={moviesLoading}>
-                  {moviesLoading ? "Loading..." : "Load More"}
-                </Button>
-              </div>
-            )}
+            {moviesData.meta &&
+              moviesData.meta.page < moviesData.meta.totalPages && (
+                <div className="mt-8 text-center">
+                  <Button
+                    onClick={handleLoadMore}
+                    className="bg-red-600 hover:bg-red-700"
+                    disabled={moviesLoading}
+                  >
+                    {moviesLoading ? "Loading..." : "Load More"}
+                  </Button>
+                </div>
+              )}
           </>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">No movies found matching your criteria.</p>
+            <p className="text-gray-400 text-lg">
+              No movies found matching your criteria.
+            </p>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }
