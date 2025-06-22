@@ -1,5 +1,5 @@
 {
-  "name": "Samflix - Media Library Manager",
+  "name": "Samflix",
   "short_name": "Samflix",
   "description": "A modern media library viewer, manager and streaming platform for movies and TV series",
   "start_url": "/",
@@ -41,9 +41,9 @@
   ],
   "screenshots": [
     {
-      "src": "/samflix.jpg",
-      "sizes": "1280x720",
-      "type": "image/jpeg",
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "form_factor": "wide",
       "label": "Samflix Home Screen"
     }
