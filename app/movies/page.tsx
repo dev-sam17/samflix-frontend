@@ -209,9 +209,6 @@ export default function MoviesPage() {
   const [selectedGenre, setSelectedGenre] = useState("all");
   const { apiBaseUrl } = useApiUrl();
 
-  // Debug output
-  console.log("Movies page - API URL:", apiBaseUrl);
-
   // Use the new client API for real-time data
   const {
     data: moviesData,

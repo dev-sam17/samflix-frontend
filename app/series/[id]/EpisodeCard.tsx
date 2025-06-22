@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Play, Download, Calendar, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { HLSPlayer } from "@/components/ui/hls-player";
+import { HLSPlayer } from "@/components/hls-player";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { TranscodeStatus } from "@/lib/types";
 

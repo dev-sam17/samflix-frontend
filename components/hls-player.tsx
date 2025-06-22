@@ -215,19 +215,19 @@ export function HLSPlayer({
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
-        console.error("HLS Error:", data);
+        console.log("HLS Error:", data);
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              console.error("Network error, trying to recover...");
+              console.log("Network error, trying to recover...");
               hls.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              console.error("Media error, trying to recover...");
+              console.log("Media error, trying to recover...");
               hls.recoverMediaError();
               break;
             default:
-              console.error("Unrecoverable error");
+              console.log("Unrecoverable error");
               hls.destroy();
               break;
           }

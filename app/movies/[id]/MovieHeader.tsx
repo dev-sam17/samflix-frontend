@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { HLSPlayer } from "@/components/ui/hls-player";
+import { HLSPlayer } from "@/components/hls-player";
 import { Play, Download, Star, Clock } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
@@ -13,7 +13,6 @@ import { TranscodeStatus, type Movie } from "@/lib/types";
 
 export function MovieHeader({ movie }: { movie: Movie }) {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
-  console.log(movie);
 
   return (
     <>
