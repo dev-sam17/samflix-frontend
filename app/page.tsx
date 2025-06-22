@@ -10,8 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Play, Star, Calendar, Clock, Film, Tv } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { api, type Movie, type TvSeries } from "@/lib/api";
-import { useApi } from "@/hooks/use-api";
+import { api } from "@/lib/api";
+import type { Movie, TvSeries } from "@/lib/types";
+import { useApiWithContext } from "@/hooks/use-api-with-context";
+import { useApiUrl } from "@/contexts/api-url-context";
 
 function HeroSection({ featuredMovie }: { featuredMovie: Movie | null }) {
   if (!featuredMovie) {
@@ -209,13 +211,16 @@ function LoadingGrid() {
 }
 
 export default function HomePage() {
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<(Movie | TvSeries)[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const { apiBaseUrl } = useApiUrl();
 
   // Fetch featured movies
-  const { data: moviesData, loading: moviesLoading } = useApi(
-    () =>
+  const { data: moviesData, loading: moviesLoading } = useApiWithContext(
+    (baseUrl) => () =>
       api.client.movies.getAll({
+        baseUrl,
         limit: 6,
         sortBy: "rating",
         sortOrder: "desc",
@@ -224,9 +229,10 @@ export default function HomePage() {
   );
 
   // Fetch featured series
-  const { data: seriesData, loading: seriesLoading } = useApi(
-    () =>
+  const { data: seriesData, loading: seriesLoading } = useApiWithContext(
+    (baseUrl) => () =>
       api.client.series.getAll({
+        baseUrl,
         limit: 6,
         sortBy: "firstAirDate",
         sortOrder: "desc",
@@ -235,8 +241,8 @@ export default function HomePage() {
   );
 
   // Get system stats
-  const { data: healthData } = useApi(
-    () => api.client.system.healthCheck(),
+  const { data: healthData } = useApiWithContext(
+    (baseUrl) => () => api.client.system.healthCheck(baseUrl),
     []
   );
 
@@ -250,8 +256,8 @@ export default function HomePage() {
     setIsSearching(true);
     try {
       const [movieResults, seriesResults] = await Promise.all([
-        api.client.movies.getAll({ search: query }),
-        api.client.series.getAll({ search: query }),
+        api.client.movies.getAll({ baseUrl: apiBaseUrl!, search: query }),
+        api.client.series.getAll({ baseUrl: apiBaseUrl!, search: query }),
       ]);
       setSearchResults([...movieResults.data, ...seriesResults.data]);
     } catch (error) {
@@ -268,16 +274,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Navigation */}
-
       <div className="container mx-auto px-4 py-8 space-y-12">
-        {/* Hero Section */}
         <HeroSection featuredMovie={featuredMovie} />
-
-        {/* Search */}
         <SearchSection onSearch={handleSearch} />
-
-        {/* Search Results */}
         {isSearching && (
           <section className="space-y-6">
             <h2 className="text-2xl font-bold">Searching...</h2>
