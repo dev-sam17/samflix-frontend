@@ -1,31 +1,47 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Filter, Grid, List, Calendar } from "lucide-react"
-import Link from "next/link"
-import Image from "next/image"
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Filter, Grid, List, Calendar } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
 
-import { api, type TvSeries } from "@/lib/api"
-import { useApi } from "@/hooks/use-api"
+import { api } from "@/lib/api";
+import type { TvSeries } from "@/lib/types";
+import { useApi } from "@/hooks/use-api";
+import { useApiWithContext } from "@/hooks/use-api-with-context";
 
 type SeriesParams = {
-  page: number
-  limit: number
-  sortBy: string
-  sortOrder: "asc" | "desc"
-  search?: string
-  genre?: string
-  status?: string
-}
+  page: number;
+  limit: number;
+  sortBy: string;
+  sortOrder: "asc" | "desc";
+  search?: string;
+  genre?: string;
+  status?: string;
+};
 
-function SeriesCard({ series, viewMode }: { series: TvSeries; viewMode: "grid" | "list" }) {
-  const totalEpisodes = series.episodes.length
-  const totalSeasons = Array.from(new Set(series.episodes.map(ep => ep.seasonNumber))).length
+function SeriesCard({
+  series,
+  viewMode,
+}: {
+  series: TvSeries;
+  viewMode: "grid" | "list";
+}) {
+  const totalEpisodes = series.episodes.length;
+  const totalSeasons = Array.from(
+    new Set(series.episodes.map((ep) => ep.seasonNumber))
+  ).length;
 
   if (viewMode === "list") {
     return (
@@ -43,9 +59,15 @@ function SeriesCard({ series, viewMode }: { series: TvSeries; viewMode: "grid" |
             <div className="flex-1 p-4">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-1">{series.title}</h3>
+                  <h3 className="text-lg font-semibold text-white mb-1">
+                    {series.title}
+                  </h3>
                   <div className="flex items-center gap-4 text-sm text-gray-400 mb-2">
-                    <span>{series.firstAirDate ? new Date(series.firstAirDate).getFullYear() : "Unknown"}</span>
+                    <span>
+                      {series.firstAirDate
+                        ? new Date(series.firstAirDate).getFullYear()
+                        : "Unknown"}
+                    </span>
                     <span>
                       {totalSeasons} Season{totalSeasons > 1 ? "s" : ""}
                     </span>
@@ -55,7 +77,11 @@ function SeriesCard({ series, viewMode }: { series: TvSeries; viewMode: "grid" |
                 <div className="flex gap-2">
                   <Badge
                     variant="secondary"
-                    className={series.status === "Ended" ? "bg-red-600 text-white" : "bg-green-600 text-white"}
+                    className={
+                      series.status === "Ended"
+                        ? "bg-red-600 text-white"
+                        : "bg-green-600 text-white"
+                    }
                   >
                     {series.status}
                   </Badge>
@@ -63,17 +89,23 @@ function SeriesCard({ series, viewMode }: { series: TvSeries; viewMode: "grid" |
               </div>
               <div className="flex gap-2 mb-3">
                 {series.genres.map((genre: string) => (
-                  <Badge key={genre} variant="outline" className="text-xs border-gray-600 text-gray-300">
+                  <Badge
+                    key={genre}
+                    variant="outline"
+                    className="text-xs border-gray-600 text-gray-300"
+                  >
                     {genre}
                   </Badge>
                 ))}
               </div>
-              <p className="text-gray-400 text-sm line-clamp-2">{series.overview}</p>
+              <p className="text-gray-400 text-sm line-clamp-2">
+                {series.overview}
+              </p>
             </div>
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -90,7 +122,11 @@ function SeriesCard({ series, viewMode }: { series: TvSeries; viewMode: "grid" |
           <div className="absolute top-2 right-2">
             <Badge
               variant="secondary"
-              className={series.status === "Ended" ? "bg-red-600 text-white" : "bg-green-600 text-white"}
+              className={
+                series.status === "Ended"
+                  ? "bg-red-600 text-white"
+                  : "bg-green-600 text-white"
+              }
             >
               {series.status}
             </Badge>
@@ -100,15 +136,23 @@ function SeriesCard({ series, viewMode }: { series: TvSeries; viewMode: "grid" |
               <div>
                 {totalSeasons} Season{totalSeasons > 1 ? "s" : ""}
               </div>
-              <div className="text-xs text-gray-300">{totalEpisodes} Episodes</div>
+              <div className="text-xs text-gray-300">
+                {totalEpisodes} Episodes
+              </div>
             </div>
           </div>
         </div>
 
         <CardContent className="p-4">
-          <h3 className="font-semibold text-white mb-2 line-clamp-1">{series.title}</h3>
+          <h3 className="font-semibold text-white mb-2 line-clamp-1">
+            {series.title}
+          </h3>
           <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
-            <span>{series.firstAirDate ? new Date(series.firstAirDate).getFullYear() : "Unknown"}</span>
+            <span>
+              {series.firstAirDate
+                ? new Date(series.firstAirDate).getFullYear()
+                : "Unknown"}
+            </span>
             <div className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
               {series.status}
@@ -116,7 +160,11 @@ function SeriesCard({ series, viewMode }: { series: TvSeries; viewMode: "grid" |
           </div>
           <div className="flex gap-1 flex-wrap">
             {series.genres.slice(0, 2).map((genre: string) => (
-              <Badge key={genre} variant="outline" className="text-xs border-gray-600 text-gray-300">
+              <Badge
+                key={genre}
+                variant="outline"
+                className="text-xs border-gray-600 text-gray-300"
+              >
                 {genre}
               </Badge>
             ))}
@@ -124,13 +172,19 @@ function SeriesCard({ series, viewMode }: { series: TvSeries; viewMode: "grid" |
         </CardContent>
       </Card>
     </Link>
-  )
+  );
 }
 
 // Loading skeleton component
 function LoadingGrid({ viewMode }: { viewMode: "grid" | "list" }) {
   return (
-    <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6" : "space-y-4"}>
+    <div
+      className={
+        viewMode === "grid"
+          ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6"
+          : "space-y-4"
+      }
+    >
       {Array.from({ length: 12 }).map((_, i) => (
         <Card key={i} className="bg-gray-900/50 border-gray-800 animate-pulse">
           <div className="relative aspect-[2/3] bg-gray-800 rounded-t-lg" />
@@ -141,91 +195,79 @@ function LoadingGrid({ viewMode }: { viewMode: "grid" | "list" }) {
         </Card>
       ))}
     </div>
-  )
+  );
 }
 
 export default function SeriesPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedGenre, setSelectedGenre] = useState("all")
-  const [selectedStatus, setSelectedStatus] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all");
   const [params, setParams] = useState<SeriesParams>({
     page: 1,
     limit: 24,
     sortBy: "title",
     sortOrder: "asc",
-  })
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  });
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   // Fetch series data
-  const { data: seriesData, loading: seriesLoading } = useApi(
-    () => api.client.series.getAll(params),
+  const { data: seriesData, loading: seriesLoading } = useApiWithContext(
+    (baseUrl) => () => api.client.series.getAll({ baseUrl, ...params }),
     [params]
-  )
+  );
 
   // Fetch genres
-  const { data: genres } = useApi(() => api.client.series.getGenres(), [])
+  const { data: genres } = useApiWithContext(
+    (baseUrl) => () => api.client.series.getGenres(baseUrl),
+    []
+  );
 
   // Handle search with debounce
   const handleSearch = api.utils.debounce((value: string) => {
-    setParams((prev) => ({ ...prev, page: 1, search: value || undefined }))
-  }, 300)
+    setParams((prev) => ({ ...prev, page: 1, search: value || undefined }));
+  }, 300);
 
   // Handle genre change
   const handleGenreChange = (value: string) => {
-    setSelectedGenre(value)
-    setParams((prev) => ({ ...prev, page: 1, genre: value === "all" ? undefined : value }))
-  }
+    setSelectedGenre(value);
+    setParams((prev) => ({
+      ...prev,
+      page: 1,
+      genre: value === "all" ? undefined : value,
+    }));
+  };
 
   // Handle status change
   const handleStatusChange = (value: string) => {
-    setSelectedStatus(value)
-    setParams((prev) => ({ ...prev, page: 1, status: value === "all" ? undefined : value }))
-  }
+    setSelectedStatus(value);
+    setParams((prev) => ({
+      ...prev,
+      page: 1,
+      status: value === "all" ? undefined : value,
+    }));
+  };
 
   // Handle sort change
   const handleSortChange = (value: string) => {
-    setParams((prev) => ({ ...prev, page: 1, sortBy: value }))
-  }
+    setParams((prev) => ({ ...prev, page: 1, sortBy: value }));
+  };
 
   // Handle load more
   const handleLoadMore = () => {
     if (seriesData?.meta && params.page < seriesData.meta.totalPages) {
-      setParams((prev) => ({ ...prev, page: prev.page + 1 }))
+      setParams((prev) => ({ ...prev, page: prev.page + 1 }));
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-800">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-red-500">
-              Samflix
-            </Link>
-            <div className="flex items-center gap-6">
-              <Link href="/movies" className="hover:text-red-400 transition-colors">
-                Movies
-              </Link>
-              <Link href="/series" className="text-red-400">
-                TV Series
-              </Link>
-              <Link href="/genres" className="hover:text-red-400 transition-colors">
-                Genres
-              </Link>
-              <Link href="/scanner" className="hover:text-red-400 transition-colors">
-                Scanner
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">TV Series</h1>
-          <p className="text-gray-400">Discover and manage your TV series collection</p>
+          <p className="text-gray-400">
+            Discover and manage your TV series collection
+          </p>
         </div>
 
         {/* Filters and Search */}
@@ -262,7 +304,9 @@ export default function SeriesPage() {
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-700">
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Returning Series">Returning Series</SelectItem>
+                <SelectItem value="Returning Series">
+                  Returning Series
+                </SelectItem>
                 <SelectItem value="Ended">Ended</SelectItem>
               </SelectContent>
             </Select>
@@ -283,7 +327,11 @@ export default function SeriesPage() {
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setViewMode("grid")}
-                className={viewMode === "grid" ? "bg-red-600 hover:bg-red-700" : "border-gray-600 hover:bg-white/10"}
+                className={
+                  viewMode === "grid"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "border-gray-600 hover:bg-white/10"
+                }
               >
                 <Grid className="w-4 h-4" />
               </Button>
@@ -291,7 +339,11 @@ export default function SeriesPage() {
                 variant={viewMode === "list" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setViewMode("list")}
-                className={viewMode === "list" ? "bg-red-600 hover:bg-red-700" : "border-gray-600 hover:bg-white/10"}
+                className={
+                  viewMode === "list"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "border-gray-600 hover:bg-white/10"
+                }
               >
                 <List className="w-4 h-4" />
               </Button>
@@ -304,9 +356,13 @@ export default function SeriesPage() {
           <p className="text-gray-400">
             {seriesData?.meta ? (
               <>
-                Showing {(seriesData.meta.page - 1) * seriesData.meta.limit + 1} -{" "}
-                {Math.min(seriesData.meta.page * seriesData.meta.limit, seriesData.meta.total)} of{" "}
-                {seriesData.meta.total} TV series
+                Showing {(seriesData.meta.page - 1) * seriesData.meta.limit + 1}{" "}
+                -{" "}
+                {Math.min(
+                  seriesData.meta.page * seriesData.meta.limit,
+                  seriesData.meta.total
+                )}{" "}
+                of {seriesData.meta.total} TV series
               </>
             ) : (
               "Loading series..."
@@ -319,27 +375,44 @@ export default function SeriesPage() {
           <LoadingGrid viewMode={viewMode} />
         ) : seriesData?.data.length ? (
           <>
-            <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6" : "space-y-4"}>
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6"
+                  : "space-y-4"
+              }
+            >
               {seriesData.data.map((series) => (
-                <SeriesCard key={series.id} series={series} viewMode={viewMode} />
+                <SeriesCard
+                  key={series.id}
+                  series={series}
+                  viewMode={viewMode}
+                />
               ))}
             </div>
 
             {/* Load More Button */}
-            {seriesData.meta && seriesData.meta.page < seriesData.meta.totalPages && (
-              <div className="mt-8 text-center">
-                <Button onClick={handleLoadMore} className="bg-red-600 hover:bg-red-700" disabled={seriesLoading}>
-                  {seriesLoading ? "Loading..." : "Load More"}
-                </Button>
-              </div>
-            )}
+            {seriesData.meta &&
+              seriesData.meta.page < seriesData.meta.totalPages && (
+                <div className="mt-8 text-center">
+                  <Button
+                    onClick={handleLoadMore}
+                    className="bg-red-600 hover:bg-red-700"
+                    disabled={seriesLoading}
+                  >
+                    {seriesLoading ? "Loading..." : "Load More"}
+                  </Button>
+                </div>
+              )}
           </>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">No TV series found matching your criteria.</p>
+            <p className="text-gray-400 text-lg">
+              No TV series found matching your criteria.
+            </p>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

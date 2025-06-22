@@ -1,61 +1,97 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/hooks/use-toast"
-import { Scan, FolderPlus, Folder, AlertTriangle, CheckCircle, XCircle, Trash2, Settings, Activity, Star } from "lucide-react"
-import Link from "next/link"
-import { api, type MediaFolder, type ScanningConflict } from "@/lib/api"
-import { useApi, useMutation } from "@/hooks/use-api"
-import { ScanProgress } from "./components/ScanProgress"
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Scan,
+  FolderPlus,
+  Folder,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Trash2,
+  Settings,
+  Activity,
+  Star,
+} from "lucide-react";
+import { api } from "@/lib/api";
+import type { MediaFolder, ScanningConflict } from "@/lib/types";
+import { ScanProgress } from "./components/ScanProgress";
+import {
+  useApiWithContext,
+  useMutationWithContext,
+} from "@/hooks/use-api-with-context";
 
 function AddFolderDialog({ onSuccess }: { onSuccess: () => void }) {
-  const [open, setOpen] = useState(false)
-  const [folderPath, setFolderPath] = useState("")
-  const [folderType, setFolderType] = useState("")
-  const { toast } = useToast()
+  const [open, setOpen] = useState(false);
+  const [folderPath, setFolderPath] = useState("");
+  const [folderType, setFolderType] = useState("");
+  const { toast } = useToast();
 
-  const { mutate: addFolder, loading } = useMutation(api.client.scanner.addFolder)
+  const { mutate: addFolder, loading } = useMutationWithContext(
+    (baseUrl: string) => () =>
+      api.client.scanner.addFolder(baseUrl, {
+        path: folderPath,
+        type: folderType as "movies" | "series",
+      })
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!folderPath || !folderType) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     try {
-      await addFolder({ path: folderPath, type: folderType as "movies" | "series" })
+      await addFolder({
+        path: folderPath,
+        type: folderType as "movies" | "series",
+      });
       toast({
         title: "Success",
         description: "Media folder added successfully",
-      })
-      setOpen(false)
-      setFolderPath("")
-      setFolderType("")
-      onSuccess()
+      });
+      setOpen(false);
+      setFolderPath("");
+      setFolderType("");
+      onSuccess();
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to add media folder",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -94,7 +130,11 @@ function AddFolderDialog({ onSuccess }: { onSuccess: () => void }) {
             </Select>
           </div>
           <div className="flex gap-2 pt-4">
-            <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700" disabled={loading}>
+            <Button
+              type="submit"
+              className="flex-1 bg-red-600 hover:bg-red-700"
+              disabled={loading}
+            >
               {loading ? "Adding..." : "Add Folder"}
             </Button>
             <Button
@@ -109,18 +149,24 @@ function AddFolderDialog({ onSuccess }: { onSuccess: () => void }) {
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
-function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningConflict; onSuccess: () => void }) {
-  const [open, setOpen] = useState(false)
-  const [selectedMatch, setSelectedMatch] = useState("")
-  const { toast } = useToast()
+function ConflictResolutionDialog({
+  conflict,
+  onSuccess,
+}: {
+  conflict: ScanningConflict;
+  onSuccess: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState("");
+  const { toast } = useToast();
 
-  const { mutate: resolveConflict, loading } = useMutation(
-    (params: { id: string; selectedId: number }) => 
-      api.client.scanner.resolveConflict(params.id, params.selectedId)
-  )
+  const { mutate: resolveConflict, loading } = useMutationWithContext(
+    (baseUrl: string) => (params: { id: string; selectedId: number }) =>
+      api.client.scanner.resolveConflict(baseUrl, params.id, params.selectedId)
+  );
 
   const handleResolve = async () => {
     if (!selectedMatch) {
@@ -128,29 +174,29 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
         title: "Error",
         description: "Please select a match",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     try {
       await resolveConflict({
         id: conflict.id,
-        selectedId: Number.parseInt(selectedMatch)
-      })
+        selectedId: Number.parseInt(selectedMatch),
+      });
       toast({
         title: "Success",
         description: "Conflict resolved successfully",
-      })
-      setOpen(false)
-      onSuccess()
+      });
+      setOpen(false);
+      onSuccess();
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to resolve conflict",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -166,7 +212,7 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
             Select the correct match for this file to resolve the conflict
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex gap-2 px-6 py-2 border-b border-gray-800">
           <Button
             onClick={handleResolve}
@@ -183,15 +229,19 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
             Cancel
           </Button>
         </div>
-        
+
         <div className="space-y-4 overflow-y-auto flex-1 pr-2 p-6 pt-4">
           <div>
             <Label className="text-sm text-gray-400">File Name</Label>
-            <code className="block text-sm bg-gray-800 p-2 rounded text-green-400 break-all">{conflict.fileName}</code>
+            <code className="block text-sm bg-gray-800 p-2 rounded text-green-400 break-all">
+              {conflict.fileName}
+            </code>
           </div>
 
           <div>
-            <Label className="text-sm text-gray-400 mb-3 block">Select Correct Match</Label>
+            <Label className="text-sm text-gray-400 mb-3 block">
+              Select Correct Match
+            </Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {conflict.possibleMatches.map((match: any) => (
                 <Card
@@ -207,8 +257,8 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
                     <div className="flex flex-col md:flex-row h-full">
                       <div className="w-full md:w-1/3 relative">
                         {match.poster_path ? (
-                          <img 
-                            src={`https://image.tmdb.org/t/p/w300${match.poster_path}`} 
+                          <img
+                            src={`https://image.tmdb.org/t/p/w300${match.poster_path}`}
                             alt={match.title}
                             className="h-[200px] md:h-full w-full object-cover rounded-t-lg md:rounded-l-lg md:rounded-t-none"
                           />
@@ -226,19 +276,31 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
                       <div className="p-4 flex-1 flex flex-col">
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <h4 className="font-semibold text-white text-lg">{match.title}</h4>
-                            <p className="text-sm text-gray-400">Released: {match.release_date || match.year || 'Unknown'}</p>
+                            <h4 className="font-semibold text-white text-lg">
+                              {match.title}
+                            </h4>
+                            <p className="text-sm text-gray-400">
+                              Released:{" "}
+                              {match.release_date || match.year || "Unknown"}
+                            </p>
                           </div>
-                          <Badge variant="outline" className="border-gray-600 text-gray-300">
+                          <Badge
+                            variant="outline"
+                            className="border-gray-600 text-gray-300"
+                          >
                             ID: {match.id}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-300 mt-1 flex-grow line-clamp-4 md:line-clamp-6">{match.overview}</p>
+                        <p className="text-sm text-gray-300 mt-1 flex-grow line-clamp-4 md:line-clamp-6">
+                          {match.overview}
+                        </p>
                         <div className="mt-2 pt-2 border-t border-gray-700">
-                          {match.vote_average &&  (
+                          {match.vote_average && (
                             <div className="flex items-center gap-1">
                               <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                              <span className="text-sm text-gray-300">{match.vote_average.toFixed(1)}/10</span>
+                              <span className="text-sm text-gray-300">
+                                {match.vote_average.toFixed(1)}/10
+                              </span>
                             </div>
                           )}
                         </div>
@@ -269,167 +331,168 @@ function ConflictResolutionDialog({ conflict, onSuccess }: { conflict: ScanningC
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 export default function ScannerPage() {
-  const { toast } = useToast()
-  const [showScanProgress, setShowScanProgress] = useState(false)
+  const { toast } = useToast();
+  const [showScanProgress, setShowScanProgress] = useState(false);
 
   // Fetch data
-  const { data: folders, loading: foldersLoading, refetch: refetchFolders } = useApi(() => api.client.scanner.getFolders(), [])
+  const {
+    data: folders,
+    loading: foldersLoading,
+    refetch: refetchFolders,
+  } = useApiWithContext(
+    (baseUrl: string) => () => api.client.scanner.getFolders(baseUrl),
+    []
+  );
   const {
     data: conflicts,
     loading: conflictsLoading,
     refetch: refetchConflicts,
-  } = useApi(() => api.client.scanner.getConflicts(), [])
-  const { data: healthData } = useApi(() => api.client.system.healthCheck(), [])
+  } = useApiWithContext(
+    (baseUrl: string) => () => api.client.scanner.getConflicts(baseUrl),
+    []
+  );
+  const { data: healthData } = useApiWithContext(
+    (baseUrl: string) => () => api.client.system.healthCheck(baseUrl),
+    []
+  );
 
   // Mutations
-  const { mutate: deleteFolder } = useMutation(api.client.scanner.deleteFolder)
-  const { mutate: deleteConflict } = useMutation(api.client.scanner.deleteConflict)
-  const { mutate: deleteAllConflicts } = useMutation(api.client.scanner.deleteAllConflicts)
-  const { mutate: updateFolder } = useMutation(
-    (params: { id: string; updates: Partial<MediaFolder> }) => 
-      api.client.scanner.updateFolder(params.id, params.updates)
-  )
+  const { mutate: deleteFolder } = useMutationWithContext(
+    (baseUrl: string) => (id: string) =>
+      api.client.scanner.deleteFolder(baseUrl, id)
+  );
+  const { mutate: deleteConflict } = useMutationWithContext(
+    (baseUrl: string) => (id: string) =>
+      api.client.scanner.deleteConflict(baseUrl, id)
+  );
+  const { mutate: deleteAllConflicts } = useMutationWithContext(
+    (baseUrl: string) => () => api.client.scanner.deleteAllConflicts(baseUrl)
+  );
+  const { mutate: updateFolder } = useMutationWithContext(
+    (baseUrl: string) =>
+      (params: { id: string; updates: Partial<MediaFolder> }) =>
+        api.client.scanner.updateFolder(baseUrl, params.id, params.updates)
+  );
 
   const handleStartScan = async () => {
-    setShowScanProgress(true)
-  }
+    setShowScanProgress(true);
+  };
 
   const handleScanComplete = () => {
-    refetchFolders()
-    refetchConflicts()
+    refetchFolders();
+    refetchConflicts();
     toast({
       title: "Scan Completed",
       description: "Media scan completed successfully",
-    })
-  }
+    });
+  };
 
   const handleDeleteFolder = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this folder?")) return
+    if (!confirm("Are you sure you want to delete this folder?")) return;
 
     try {
-      await deleteFolder(id)
+      await deleteFolder(id);
       toast({
         title: "Success",
         description: "Media folder deleted successfully",
-      })
-      refetchFolders()
+      });
+      refetchFolders();
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to delete folder",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleToggleFolder = async (folder: MediaFolder) => {
     try {
       await updateFolder({
         id: folder.id,
-        updates: { active: !folder.active }
-      })
+        updates: { active: !folder.active },
+      });
       toast({
         title: "Success",
-        description: `Folder ${folder.active ? "deactivated" : "activated"} successfully`,
-      })
-      refetchFolders()
+        description: `Folder ${
+          folder.active ? "deactivated" : "activated"
+        } successfully`,
+      });
+      refetchFolders();
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update folder",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleDeleteConflict = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this conflict?")) return
+    if (!confirm("Are you sure you want to delete this conflict?")) return;
 
     try {
-      await deleteConflict(id)
+      await deleteConflict(id);
       toast({
         title: "Success",
         description: "Scanning conflict deleted successfully",
-      })
-      refetchConflicts()
+      });
+      refetchConflicts();
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to delete conflict",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleDeleteAllConflicts = async () => {
-    if (!confirm("Are you sure you want to delete all conflicts?")) return
+    if (!confirm("Are you sure you want to delete all conflicts?")) return;
 
     try {
-      await deleteAllConflicts("all")
+      await deleteAllConflicts("all");
       toast({
         title: "Success",
         description: "All scanning conflicts deleted successfully",
-      })
-      refetchConflicts()
+      });
+      refetchConflicts();
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to delete conflicts",
         variant: "destructive",
-      })
+      });
     }
-  } 
+  };
 
   // Calculate stats
-  const totalFolders = folders?.length || 0
-  const activeFolders = folders?.filter((f) => f.active).length || 0
-  const totalConflicts = conflicts?.length || 0
-  const unresolvedConflicts = conflicts?.filter((c) => !c.resolved).length || 0
+  const totalFolders = folders?.length || 0;
+  const activeFolders = folders?.filter((f) => f.active).length || 0;
+  const totalConflicts = conflicts?.length || 0;
+  const unresolvedConflicts = conflicts?.filter((c) => !c.resolved).length || 0;
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-800">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-red-500">
-              Samflix
-            </Link>
-            <div className="flex items-center gap-6">
-              <Link href="/movies" className="hover:text-red-400 transition-colors">
-                Movies
-              </Link>
-              <Link href="/series" className="hover:text-red-400 transition-colors">
-                TV Series
-              </Link>
-              <Link href="/genres" className="hover:text-red-400 transition-colors">
-                Genres
-              </Link>
-              <Link href="/scanner" className="text-red-400">
-                Scanner
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Media Scanner</h1>
-          <p className="text-gray-400">Manage your media folders and resolve scanning conflicts</p>
+          <p className="text-gray-400">
+            Manage your media folders and resolve scanning conflicts
+          </p>
         </div>
 
         {/* Quick Actions */}
         <div className="mb-8 flex gap-4">
           {!showScanProgress ? (
-            <Button 
-              size="lg" 
-              className="bg-red-600 hover:bg-red-700" 
+            <Button
+              size="lg"
+              className="bg-red-600 hover:bg-red-700"
               onClick={handleStartScan}
             >
               <Scan className="w-5 h-5 mr-2" />
@@ -442,9 +505,7 @@ export default function ScannerPage() {
         {/* Scan Progress */}
         {showScanProgress && (
           <div className="mb-8">
-            <ScanProgress 
-              onComplete={handleScanComplete} 
-            />
+            <ScanProgress onComplete={handleScanComplete} />
           </div>
         )}
 
@@ -453,28 +514,36 @@ export default function ScannerPage() {
           <Card className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 border-blue-500/30">
             <CardContent className="p-6 text-center">
               <Folder className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{totalFolders}</div>
+              <div className="text-2xl font-bold text-white">
+                {totalFolders}
+              </div>
               <div className="text-sm text-gray-400">Total Folders</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-green-600/20 to-green-800/20 border-green-500/30">
             <CardContent className="p-6 text-center">
               <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{activeFolders}</div>
+              <div className="text-2xl font-bold text-white">
+                {activeFolders}
+              </div>
               <div className="text-sm text-gray-400">Active Folders</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 border-yellow-500/30">
             <CardContent className="p-6 text-center">
               <AlertTriangle className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{unresolvedConflicts}</div>
+              <div className="text-2xl font-bold text-white">
+                {unresolvedConflicts}
+              </div>
               <div className="text-sm text-gray-400">Conflicts</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 border-purple-500/30">
             <CardContent className="p-6 text-center">
               <Activity className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{healthData ? "Online" : "Offline"}</div>
+              <div className="text-2xl font-bold text-white">
+                {healthData ? "Online" : "Offline"}
+              </div>
               <div className="text-sm text-gray-400">System Status</div>
             </CardContent>
           </Card>
@@ -482,13 +551,22 @@ export default function ScannerPage() {
 
         <Tabs defaultValue="folders" className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-gray-900/50 border border-gray-800">
-            <TabsTrigger value="folders" className="data-[state=active]:bg-red-600">
+            <TabsTrigger
+              value="folders"
+              className="data-[state=active]:bg-red-600"
+            >
               Media Folders
             </TabsTrigger>
-            <TabsTrigger value="conflicts" className="data-[state=active]:bg-red-600">
+            <TabsTrigger
+              value="conflicts"
+              className="data-[state=active]:bg-red-600"
+            >
               Conflicts{" "}
               {unresolvedConflicts > 0 && (
-                <Badge variant="secondary" className="ml-2 bg-yellow-600 text-white">
+                <Badge
+                  variant="secondary"
+                  className="ml-2 bg-yellow-600 text-white"
+                >
                   {unresolvedConflicts}
                 </Badge>
               )}
@@ -500,12 +578,18 @@ export default function ScannerPage() {
               {foldersLoading ? (
                 <div className="space-y-4">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="animate-pulse bg-gray-800 h-24 rounded-lg" />
+                    <div
+                      key={i}
+                      className="animate-pulse bg-gray-800 h-24 rounded-lg"
+                    />
                   ))}
                 </div>
               ) : folders && folders.length > 0 ? (
                 folders.map((folder) => (
-                  <Card key={folder.id} className="bg-gray-900/50 border-gray-800">
+                  <Card
+                    key={folder.id}
+                    className="bg-gray-900/50 border-gray-800"
+                  >
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -514,19 +598,29 @@ export default function ScannerPage() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold text-white">{folder.path}</h3>
+                              <h3 className="font-semibold text-white">
+                                {folder.path}
+                              </h3>
                               <Badge
                                 variant="secondary"
-                                className={folder.active ? "bg-green-600 text-white" : "bg-gray-600 text-white"}
+                                className={
+                                  folder.active
+                                    ? "bg-green-600 text-white"
+                                    : "bg-gray-600 text-white"
+                                }
                               >
                                 {folder.active ? "Active" : "Inactive"}
                               </Badge>
-                              <Badge variant="outline" className="border-gray-600 text-gray-300">
+                              <Badge
+                                variant="outline"
+                                className="border-gray-600 text-gray-300"
+                              >
                                 {folder.type}
                               </Badge>
                             </div>
                             <div className="text-sm text-gray-400">
-                              Added: {new Date(folder.createdAt).toLocaleDateString()}
+                              Added:{" "}
+                              {new Date(folder.createdAt).toLocaleDateString()}
                             </div>
                           </div>
                         </div>
@@ -558,8 +652,12 @@ export default function ScannerPage() {
                 <Card className="bg-gray-900/50 border-gray-800">
                   <CardContent className="p-12 text-center">
                     <Folder className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-white mb-2">No Media Folders</h3>
-                    <p className="text-gray-400 mb-4">Add your first media folder to start scanning for content.</p>
+                    <h3 className="text-xl font-semibold text-white mb-2">
+                      No Media Folders
+                    </h3>
+                    <p className="text-gray-400 mb-4">
+                      Add your first media folder to start scanning for content.
+                    </p>
                     <AddFolderDialog onSuccess={refetchFolders} />
                   </CardContent>
                 </Card>
@@ -581,45 +679,66 @@ export default function ScannerPage() {
               {conflictsLoading ? (
                 <div className="space-y-4">
                   {Array.from({ length: 2 }).map((_, i) => (
-                    <div key={i} className="animate-pulse bg-gray-800 h-32 rounded-lg" />
+                    <div
+                      key={i}
+                      className="animate-pulse bg-gray-800 h-32 rounded-lg"
+                    />
                   ))}
                 </div>
               ) : conflicts && unresolvedConflicts > 0 ? (
                 conflicts
                   .filter((conflict) => !conflict.resolved)
                   .map((conflict) => (
-                    <Card key={conflict.id} className="bg-gray-900/50 border-gray-800 border-l-4 border-l-yellow-500">
+                    <Card
+                      key={conflict.id}
+                      className="bg-gray-900/50 border-gray-800 border-l-4 border-l-yellow-500"
+                    >
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <AlertTriangle className="w-5 h-5 text-yellow-400" />
-                              <h3 className="font-semibold text-white">Scanning Conflict</h3>
-                              <Badge variant="outline" className="border-yellow-600 text-yellow-400">
+                              <h3 className="font-semibold text-white">
+                                Scanning Conflict
+                              </h3>
+                              <Badge
+                                variant="outline"
+                                className="border-yellow-600 text-yellow-400"
+                              >
                                 {conflict.mediaType}
                               </Badge>
                             </div>
                             <div className="space-y-2 mb-4">
                               <div>
-                                <div className="text-sm text-gray-400">File Name</div>
+                                <div className="text-sm text-gray-400">
+                                  File Name
+                                </div>
                                 <code className="text-sm bg-gray-800 px-2 py-1 rounded text-green-400 break-all">
                                   {conflict.fileName}
                                 </code>
                               </div>
                               <div>
-                                <div className="text-sm text-gray-400">File Path</div>
+                                <div className="text-sm text-gray-400">
+                                  File Path
+                                </div>
                                 <code className="text-sm bg-gray-800 px-2 py-1 rounded text-blue-400 break-all">
                                   {conflict.filePath}
                                 </code>
                               </div>
                             </div>
                             <div className="text-sm text-gray-400">
-                              Found {conflict.possibleMatches.length} possible matches • Created:{" "}
-                              {new Date(conflict.createdAt).toLocaleDateString()}
+                              Found {conflict.possibleMatches.length} possible
+                              matches • Created:{" "}
+                              {new Date(
+                                conflict.createdAt
+                              ).toLocaleDateString()}
                             </div>
                           </div>
                           <div className="flex gap-2 ml-4">
-                            <ConflictResolutionDialog conflict={conflict} onSuccess={refetchConflicts} />
+                            <ConflictResolutionDialog
+                              conflict={conflict}
+                              onSuccess={refetchConflicts}
+                            />
                             <Button
                               size="sm"
                               variant="outline"
@@ -638,8 +757,13 @@ export default function ScannerPage() {
                 <Card className="bg-gray-900/50 border-gray-800">
                   <CardContent className="p-12 text-center">
                     <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-white mb-2">No Conflicts Found</h3>
-                    <p className="text-gray-400">All media files have been successfully processed and matched.</p>
+                    <h3 className="text-xl font-semibold text-white mb-2">
+                      No Conflicts Found
+                    </h3>
+                    <p className="text-gray-400">
+                      All media files have been successfully processed and
+                      matched.
+                    </p>
                   </CardContent>
                 </Card>
               )}
@@ -648,5 +772,5 @@ export default function ScannerPage() {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }
