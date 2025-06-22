@@ -77,7 +77,7 @@ export function PWAStatus() {
         {!isOnline && (
           <div className="bg-red-600 text-white px-3 py-2 rounded-lg shadow-lg flex items-center space-x-2">
             <WifiOff className="h-4 w-4" />
-            <span className="text-sm">You're offline</span>
+            <span className="text-sm">You&apos;re offline</span>
           </div>
         )}
 
