@@ -34,6 +34,8 @@ interface AudioTrack {
   label: string;
   language: string;
   default?: boolean;
+  id?: number;
+  groupId?: string;
 }
 
 interface SubtitleTrack {
@@ -41,6 +43,16 @@ interface SubtitleTrack {
   label: string;
   language: string;
   default?: boolean;
+  id?: number;
+  groupId?: string;
+}
+
+interface QualityLevel {
+  height: number;
+  width: number;
+  bitrate: number;
+  level: number;
+  name: string;
 }
 
 interface HLSPlayerProps {
@@ -59,8 +71,6 @@ export function HLSPlayer({
   poster,
   onBack,
   autoPlay = false,
-  audioTracks = [],
-  subtitleTracks = [],
 }: HLSPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -84,6 +94,20 @@ export function HLSPlayer({
   const [isPortrait, setIsPortrait] = useState(false);
   const [videoScale, setVideoScale] = useState(1);
   const [isZoomed, setIsZoomed] = useState(false);
+
+  // HLS-specific state
+  const [availableAudioTracks, setAvailableAudioTracks] = useState<
+    AudioTrack[]
+  >([]);
+  const [availableSubtitleTracks, setAvailableSubtitleTracks] = useState<
+    SubtitleTrack[]
+  >([]);
+  const [availableQualityLevels, setAvailableQualityLevels] = useState<
+    QualityLevel[]
+  >([]);
+  const [currentQualityLevel, setCurrentQualityLevel] = useState<number>(-1); // -1 for auto
+  const [isQualityDialogOpen, setIsQualityDialogOpen] = useState(false);
+  const [isSubtitleDialogOpen, setIsSubtitleDialogOpen] = useState(false);
 
   // Detect mobile and orientation
   useEffect(() => {
@@ -117,20 +141,97 @@ export function HLSPlayer({
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
+        backBufferLength: 90,
       });
       hlsRef.current = hls;
 
       hls.loadSource(src);
       hls.attachMedia(video);
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+        console.log("Manifest parsed", data);
+
+        // Extract quality levels
+        const levels = hls.levels.map((level, index) => ({
+          height: level.height,
+          width: level.width,
+          bitrate: level.bitrate,
+          level: index,
+          name: `${level.height}p (${Math.round(level.bitrate / 1000)}k)`,
+        }));
+        setAvailableQualityLevels(levels);
+
         if (autoPlay) {
           video.play().catch(console.error);
         }
       });
 
+      // Handle audio tracks
+      hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (event, data) => {
+        console.log("Audio tracks updated", data);
+        const tracks = data.audioTracks.map((track: any, index: number) => ({
+          kind: "audio",
+          label: track.name || track.lang || `Audio ${index + 1}`,
+          language: track.lang || "unknown",
+          default: track.default,
+          id: track.id,
+          groupId: track.groupId,
+        }));
+        setAvailableAudioTracks(tracks);
+
+        // Set default audio track
+        const defaultTrack = tracks.find((track: AudioTrack) => track.default);
+        if (defaultTrack) {
+          setSelectedAudioTrack(defaultTrack.language);
+        }
+      });
+
+      // Handle subtitle tracks
+      hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (event, data) => {
+        console.log("Subtitle tracks updated", data);
+        const tracks = data.subtitleTracks.map((track: any, index: number) => ({
+          kind: "subtitles",
+          label: track.name || track.lang || `Subtitle ${index + 1}`,
+          language: track.lang || "unknown",
+          default: track.default,
+          id: track.id,
+          groupId: track.groupId,
+        }));
+        setAvailableSubtitleTracks(tracks);
+
+        // Set default subtitle track
+        const defaultTrack = tracks.find(
+          (track: SubtitleTrack) => track.default
+        );
+        if (defaultTrack) {
+          setSelectedSubtitleTrack(defaultTrack.language);
+        }
+      });
+
+      // Handle level switching
+      hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+        console.log("Level switched to", data.level);
+        setCurrentQualityLevel(data.level);
+      });
+
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error("HLS Error:", data);
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.error("Network error, trying to recover...");
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.error("Media error, trying to recover...");
+              hls.recoverMediaError();
+              break;
+            default:
+              console.error("Unrecoverable error");
+              hls.destroy();
+              break;
+          }
+        }
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = src;
@@ -244,6 +345,10 @@ export function HLSPlayer({
 
       switch (e.code) {
         case "Space":
+          e.preventDefault();
+          togglePlay();
+          break;
+        case " ":
           e.preventDefault();
           togglePlay();
           break;
@@ -382,14 +487,40 @@ export function HLSPlayer({
   };
 
   const handleAudioTrackSelect = (track: AudioTrack) => {
-    setSelectedAudioTrack(track.language);
-    console.log("Selected audio track:", track);
+    const hls = hlsRef.current;
+    if (hls && track.id !== undefined) {
+      hls.audioTrack = track.id;
+      setSelectedAudioTrack(track.language);
+      console.log("Selected audio track:", track);
+    }
     setIsAudioDialogOpen(false);
   };
 
   const handleSubtitleTrackSelect = (track: SubtitleTrack) => {
-    setSelectedSubtitleTrack(track.language);
-    console.log("Selected subtitle track:", track);
+    const hls = hlsRef.current;
+    if (hls && track.id !== undefined) {
+      hls.subtitleTrack = track.id;
+      setSelectedSubtitleTrack(track.language);
+      setIsSubtitlesEnabled(true);
+      console.log("Selected subtitle track:", track);
+    }
+    setIsSubtitleDialogOpen(false);
+  };
+
+  const handleQualityLevelSelect = (level: number) => {
+    const hls = hlsRef.current;
+    if (hls) {
+      if (level === -1) {
+        // Auto quality
+        hls.currentLevel = -1;
+        setCurrentQualityLevel(-1);
+      } else {
+        hls.currentLevel = level;
+        setCurrentQualityLevel(level);
+      }
+      console.log("Selected quality level:", level);
+    }
+    setIsQualityDialogOpen(false);
   };
 
   return (
@@ -641,7 +772,7 @@ export function HLSPlayer({
               )}
 
               {/* Audio Track Selection */}
-              {audioTracks.length > 0 && (
+              {availableAudioTracks.length > 0 && (
                 <Dialog
                   open={isAudioDialogOpen}
                   onOpenChange={setIsAudioDialogOpen}
@@ -666,7 +797,7 @@ export function HLSPlayer({
                     <div className="space-y-4">
                       <h3 className="text-white font-semibold">Audio Tracks</h3>
                       <div className="space-y-2">
-                        {audioTracks.map((track, index) => (
+                        {availableAudioTracks.map((track, index) => (
                           <Button
                             key={index}
                             variant="ghost"
@@ -690,7 +821,7 @@ export function HLSPlayer({
               )}
 
               {/* Subtitle Controls */}
-              {subtitleTracks.length > 0 && (
+              {availableSubtitleTracks.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -713,7 +844,7 @@ export function HLSPlayer({
                     >
                       {isSubtitlesEnabled ? "Hide Subtitles" : "Show Subtitles"}
                     </DropdownMenuItem>
-                    {subtitleTracks.map((track, index) => (
+                    {availableSubtitleTracks.map((track, index) => (
                       <DropdownMenuItem
                         key={index}
                         className="text-white hover:bg-white/10"
@@ -724,6 +855,63 @@ export function HLSPlayer({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+              )}
+
+              {/* Quality Level Selection */}
+              {availableQualityLevels.length > 0 && (
+                <Dialog
+                  open={isQualityDialogOpen}
+                  onOpenChange={setIsQualityDialogOpen}
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "text-white hover:bg-white/20",
+                      isMobile ? "w-12 h-12" : "w-10 h-10"
+                    )}
+                    onClick={() => setIsQualityDialogOpen(true)}
+                  >
+                    <Settings
+                      className={cn("h-5 w-5", isMobile ? "h-6 w-6" : "")}
+                    />
+                  </Button>
+                  <DialogContent className="bg-gray-900 border-gray-700">
+                    <VisuallyHidden>
+                      <DialogTitle className="text-white font-semibold"></DialogTitle>
+                    </VisuallyHidden>
+                    <div className="space-y-4">
+                      <h3 className="text-white font-semibold">
+                        Quality Levels
+                      </h3>
+                      <div className="space-y-2">
+                        {availableQualityLevels.map((level, index) => (
+                          <Button
+                            key={index}
+                            variant="ghost"
+                            className="w-full justify-start text-white hover:bg-white/10"
+                            onClick={() =>
+                              handleQualityLevelSelect(level.level)
+                            }
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span>{level.name}</span>
+                            </div>
+                          </Button>
+                        ))}
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-white hover:bg-white/10"
+                          onClick={() => handleQualityLevelSelect(-1)}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span>Auto</span>
+                          </div>
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               )}
 
               {/* Fullscreen */}
