@@ -22,11 +22,9 @@ export class WebhookService {
     switch (type) {
       case "user.created":
         await this.createUser(clerkId, email, name, imageUrl);
-        console.log("User created:", { clerkId, email, name, imageUrl });
         break;
       case "user.updated":
         await this.updateUser(clerkId, email, name, imageUrl);
-        console.log("User updated:", { clerkId, email, name, imageUrl });
         break;
       default:
         console.log(`Unhandled event type: ${type}`);
@@ -34,7 +32,7 @@ export class WebhookService {
   }
 
   /**
-   * Create a new user in the database
+   * Create a new user in the database along with UserStats
    */
   private async createUser(
     clerkId: string,
@@ -42,14 +40,26 @@ export class WebhookService {
     name: string | null,
     imageUrl: string | null
   ): Promise<void> {
+    // Create user with nested userStats creation
     await this.prisma.user.create({
       data: {
         clerkId,
         email,
         name,
         imageUrl,
+        // Create UserStats for this user in the same transaction
+        userStats: {
+          create: {
+            // Default values will be applied automatically:
+            // totalPlayTime: 0 (as defined in the schema)
+          },
+        },
       },
     });
+
+    console.log(
+      `Created user with Clerk ID ${clerkId} and initialized UserStats`
+    );
   }
 
   /**
