@@ -8,7 +8,6 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { MovieHeader } from "./MovieHeader";
 import { useParams } from "next/navigation";
-import { useApi } from "@/hooks/use-api";
 import type { Movie } from "@/lib/types";
 import { useApiWithContext } from "@/hooks/use-api-with-context";
 
