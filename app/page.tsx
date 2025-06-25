@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import type { Movie, TvSeries } from "@/lib/types";
 import { useApiWithContext } from "@/hooks/use-api-with-context";
 import { useApiUrl } from "@/contexts/api-url-context";
+import { runtimeFormat } from "@/lib/utils";
 
 function HeroSection({ featuredMovie }: { featuredMovie: Movie | null }) {
   if (!featuredMovie) {
@@ -51,7 +52,7 @@ function HeroSection({ featuredMovie }: { featuredMovie: Movie | null }) {
                 <span>•</span>
                 <div className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
-                  {featuredMovie?.runtime}m
+                  {runtimeFormat(featuredMovie?.runtime)}
                 </div>
               </>
             )}

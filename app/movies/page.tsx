@@ -21,6 +21,7 @@ import type { Movie } from "@/lib/types";
 import { useApi } from "@/hooks/use-api";
 import { useApiWithContext } from "@/hooks/use-api-with-context";
 import { useApiUrl } from "@/contexts/api-url-context";
+import { runtimeFormat } from "@/lib/utils";
 
 type MovieParams = {
   page: number;
@@ -63,7 +64,7 @@ function MovieCard({
                     {movie.runtime && (
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        {movie.runtime}m
+                        {runtimeFormat(movie.runtime)}
                       </div>
                     )}
                     {movie.rating && (
@@ -151,7 +152,7 @@ function MovieCard({
             {movie.runtime && (
               <div className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {movie.runtime}m
+                {runtimeFormat(movie.runtime)}
               </div>
             )}
           </div>

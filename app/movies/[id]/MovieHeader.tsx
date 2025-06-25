@@ -10,6 +10,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { TranscodeStatus, type Movie } from "@/lib/types";
+import { runtimeFormat } from "@/lib/utils";
 
 export function MovieHeader({ movie }: { movie: Movie }) {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
@@ -76,7 +77,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
                     className="border-gray-600 text-gray-300 flex items-center gap-1"
                   >
                     <Clock className="w-3 h-3" />
-                    {movie.runtime} min
+                    {runtimeFormat(movie.runtime)}
                   </Badge>
                 )}
               </div>
