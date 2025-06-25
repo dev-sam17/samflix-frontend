@@ -11,6 +11,7 @@ import movieRoutes from "./api/routes/movie.routes";
 import seriesRoutes from "./api/routes/series.routes";
 import scannerRoutes from "./api/routes/scanner.routes";
 import streamRoutes from "./api/routes/stream.routes";
+import webhookRoutes from "./api/routes/webhook.routes";
 
 // Create Express app
 const app = express();
@@ -30,6 +31,7 @@ app.use("/api/movies", movieRoutes);
 app.use("/api/series", seriesRoutes);
 app.use("/api/scanner", scannerRoutes);
 app.use("/api/stream", streamRoutes);
+app.use("/api/webhooks", webhookRoutes);
 
 // Serve media folder as static content
 // In Docker container, media folder is one level up from the project root
