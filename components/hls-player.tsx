@@ -474,8 +474,28 @@ export function HLSPlayer({
   };
 
   const toggleSubtitles = () => {
-    setIsSubtitlesEnabled(!isSubtitlesEnabled);
-    console.log("Subtitles toggled:", !isSubtitlesEnabled);
+    const newState = !isSubtitlesEnabled;
+    setIsSubtitlesEnabled(newState);
+
+    const hls = hlsRef.current;
+    if (hls) {
+      if (newState) {
+        // If we have a previously selected subtitle track, restore it
+        if (selectedSubtitleTrack && availableSubtitleTracks.length > 0) {
+          const track = availableSubtitleTracks.find(
+            (t) => t.language === selectedSubtitleTrack
+          );
+          if (track && track.id !== undefined) {
+            hls.subtitleTrack = track.id;
+          }
+        }
+      } else {
+        // Disable subtitles by setting to -1 (off)
+        hls.subtitleTrack = -1;
+      }
+    }
+
+    console.log("Subtitles toggled:", newState);
   };
 
   const toggleZoom = () => {
