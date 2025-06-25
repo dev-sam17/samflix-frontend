@@ -1,12 +1,12 @@
 import type React from "react";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { ClerkProviderWrapper } from "@/components/providers/clerk-provider-wrapper";
 import "./globals.css";
 import { Navbar } from "@/components/ui/navbar";
 import { PWAInstallPrompt } from "@/components/ui/pwa-install-prompt";
 import { ServiceWorkerRegistration } from "@/components/ui/service-worker-registration";
 import { ApiUrlProviderWrapper } from "@/components/providers/api-url-provider-wrapper";
+import { AuthProviderWrapper } from "@/components/providers/auth-provider-wrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -77,7 +77,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProviderWrapper>
+    <AuthProviderWrapper>
       <html lang="en" className="dark">
         <head>
           <link rel="manifest" href="/site.webmanifest" />
@@ -101,6 +101,6 @@ export default function RootLayout({
           </ApiUrlProviderWrapper>
         </body>
       </html>
-    </ClerkProviderWrapper>
+    </AuthProviderWrapper>
   );
 }
