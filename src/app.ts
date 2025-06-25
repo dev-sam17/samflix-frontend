@@ -21,17 +21,21 @@ export const prisma = new PrismaClient();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
 
 // Request logger
 app.use(morgan("dev"));
 
-// Routes
+// Routes that need raw body (must come before express.json() middleware)
+app.use("/api/webhooks", webhookRoutes);
+
+// Apply JSON parsing middleware AFTER the webhook routes
+app.use(express.json());
+
+// Other routes that can use parsed JSON body
 app.use("/api/movies", movieRoutes);
 app.use("/api/series", seriesRoutes);
 app.use("/api/scanner", scannerRoutes);
 app.use("/api/stream", streamRoutes);
-app.use("/api/webhooks", webhookRoutes);
 
 // Serve media folder as static content
 // In Docker container, media folder is one level up from the project root
