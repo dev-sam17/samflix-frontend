@@ -4,11 +4,13 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, Download, Calendar, Clock } from "lucide-react";
+import { Play, Calendar, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HLSPlayer } from "@/components/hls-player";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { TranscodeStatus } from "@/lib/types";
+import { useAuth } from "@/hooks/use-auth";
+import { SignInButton } from "@clerk/nextjs";
 
 export function EpisodeCard({
   episode,
@@ -18,6 +20,7 @@ export function EpisodeCard({
   seasonNumber: number;
 }) {
   const [isPlayerOpen, setIsPlayerOpen] = React.useState(false);
+  const { isAuthenticated } = useAuth();
 
   return (
     <>
@@ -74,13 +77,27 @@ export function EpisodeCard({
               <div className="flex gap-2">
                 {episode.playPath &&
                   episode.transcodeStatus === TranscodeStatus.COMPLETED && (
-                    <Button
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                      onClick={() => setIsPlayerOpen(true)}
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      Play
-                    </Button>
+                    <>
+                      {isAuthenticated ? (
+                        <Button
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => setIsPlayerOpen(true)}
+                        >
+                          <Play className="w-4 h-4 mr-2" />
+                          Play
+                        </Button>
+                      ) : (
+                        <SignInButton
+                          mode="modal"
+                          fallbackRedirectUrl={window.location.href}
+                        >
+                          <Button className="bg-red-600 hover:bg-red-700 text-white">
+                            <Play className="w-4 h-4 mr-2" />
+                            Play
+                          </Button>
+                        </SignInButton>
+                      )}
+                    </>
                   )}
                 {(episode.transcodeStatus === TranscodeStatus.IN_PROGRESS ||
                   episode.transcodeStatus === TranscodeStatus.PENDING) && (
@@ -93,14 +110,6 @@ export function EpisodeCard({
                     UPLOADING
                   </Button>
                 )}
-                {/* <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-gray-600 text-gray-300 hover:bg-white/10"
-                >
-                  <Download className="w-3 h-3 mr-1" />
-                  Download
-                </Button> */}
               </div>
             </div>
           </div>

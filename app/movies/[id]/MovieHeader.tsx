@@ -5,15 +5,21 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { HLSPlayer } from "@/components/hls-player";
-import { Play, Download, Star, Clock } from "lucide-react";
+import { Play, Star, Clock } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { TranscodeStatus, type Movie } from "@/lib/types";
 import { runtimeFormat } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
+import { useRouter, usePathname } from "next/navigation";
+import { SignInButton } from "@clerk/nextjs";
 
 export function MovieHeader({ movie }: { movie: Movie }) {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <>
@@ -105,13 +111,27 @@ export function MovieHeader({ movie }: { movie: Movie }) {
               <div className="flex flex-wrap gap-3 pt-4">
                 {movie.playPath &&
                   movie.transcodeStatus === TranscodeStatus.COMPLETED && (
-                    <Button
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                      onClick={() => setIsPlayerOpen(true)}
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      Play
-                    </Button>
+                    <>
+                      {isAuthenticated ? (
+                        <Button
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => setIsPlayerOpen(true)}
+                        >
+                          <Play className="w-4 h-4 mr-2" />
+                          Play
+                        </Button>
+                      ) : (
+                        <SignInButton
+                          mode="modal"
+                          fallbackRedirectUrl={window.location.href}
+                        >
+                          <Button className="bg-red-600 hover:bg-red-700 text-white">
+                            <Play className="w-4 h-4 mr-2" />
+                            Play
+                          </Button>
+                        </SignInButton>
+                      )}
+                    </>
                   )}
                 {(movie.transcodeStatus === TranscodeStatus.IN_PROGRESS ||
                   movie.transcodeStatus === TranscodeStatus.PENDING) && (
