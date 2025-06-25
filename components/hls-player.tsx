@@ -4,7 +4,6 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import Hls from "hls.js";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,8 +26,6 @@ import {
   Languages,
   Subtitles,
 } from "lucide-react";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-
 interface AudioTrack {
   kind: string;
   label: string;
@@ -89,7 +86,6 @@ export function HLSPlayer({
   const [selectedSubtitleTrack, setSelectedSubtitleTrack] =
     useState<string>("");
   const [isSubtitlesEnabled, setIsSubtitlesEnabled] = useState(true);
-  const [isAudioDialogOpen, setIsAudioDialogOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isPortrait, setIsPortrait] = useState(false);
   const [videoScale, setVideoScale] = useState(1);
@@ -106,8 +102,6 @@ export function HLSPlayer({
     QualityLevel[]
   >([]);
   const [currentQualityLevel, setCurrentQualityLevel] = useState<number>(-1); // -1 for auto
-  const [isQualityDialogOpen, setIsQualityDialogOpen] = useState(false);
-  const [isSubtitleDialogOpen, setIsSubtitleDialogOpen] = useState(false);
 
   // Detect mobile and orientation
   useEffect(() => {
@@ -247,6 +241,31 @@ export function HLSPlayer({
     };
   }, [src, autoPlay]);
 
+  // Add a CSS class to the document when in fullscreen mode
+  useEffect(() => {
+    if (isFullscreen) {
+      document.documentElement.classList.add("hls-fullscreen-active");
+
+      // When in fullscreen mode, add a style tag to handle z-index for dialogs
+      const styleTag = document.createElement("style");
+      styleTag.id = "fullscreen-dialog-styles";
+      styleTag.innerHTML = `
+        [data-radix-popper-content-wrapper] {
+          z-index: 10000 !important;
+        }
+      `;
+      document.head.appendChild(styleTag);
+    } else {
+      document.documentElement.classList.remove("hls-fullscreen-active");
+
+      // Remove the style tag when exiting fullscreen
+      const existingStyle = document.getElementById("fullscreen-dialog-styles");
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    }
+  }, [isFullscreen]);
+
   // Video event listeners
   useEffect(() => {
     const video = videoRef.current;
@@ -307,8 +326,24 @@ export function HLSPlayer({
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        handleFullscreenChange
+      );
+      document.removeEventListener(
+        "mozfullscreenchange",
+        handleFullscreenChange
+      );
+      document.removeEventListener(
+        "MSFullscreenChange",
+        handleFullscreenChange
+      );
     };
   }, []);
 
@@ -513,7 +548,6 @@ export function HLSPlayer({
       setSelectedAudioTrack(track.language);
       console.log("Selected audio track:", track);
     }
-    setIsAudioDialogOpen(false);
   };
 
   const handleSubtitleTrackSelect = (track: SubtitleTrack) => {
@@ -524,7 +558,6 @@ export function HLSPlayer({
       setIsSubtitlesEnabled(true);
       console.log("Selected subtitle track:", track);
     }
-    setIsSubtitleDialogOpen(false);
   };
 
   const handleQualityLevelSelect = (level: number) => {
@@ -540,7 +573,6 @@ export function HLSPlayer({
       }
       console.log("Selected quality level:", level);
     }
-    setIsQualityDialogOpen(false);
   };
 
   return (
@@ -553,16 +585,6 @@ export function HLSPlayer({
           : "w-full aspect-video",
         isMobile && !isFullscreen ? "aspect-video" : ""
       )}
-      style={{
-        // Ensure no borders or margins in fullscreen
-        ...(isFullscreen && {
-          margin: 0,
-          padding: 0,
-          border: "none",
-          outline: "none",
-          boxSizing: "border-box",
-        }),
-      }}
       onMouseMove={handleContainerInteraction}
       onMouseLeave={hideControls}
       onTouchStart={handleContainerInteraction}
@@ -581,12 +603,6 @@ export function HLSPlayer({
         style={{
           transform: isMobile && isZoomed ? `scale(${videoScale})` : undefined,
           transformOrigin: "center center",
-          // Ensure video fills container completely in fullscreen
-          ...(isFullscreen && {
-            width: "100vw",
-            height: "100vh",
-            objectFit: "contain",
-          }),
         }}
         poster={poster}
         playsInline
@@ -793,51 +809,45 @@ export function HLSPlayer({
 
               {/* Audio Track Selection */}
               {availableAudioTracks.length > 0 && (
-                <Dialog
-                  open={isAudioDialogOpen}
-                  onOpenChange={setIsAudioDialogOpen}
-                >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "text-white hover:bg-white/20",
-                      isMobile ? "w-12 h-12" : "w-10 h-10"
-                    )}
-                    onClick={() => setIsAudioDialogOpen(true)}
-                  >
-                    <Languages
-                      className={cn("h-5 w-5", isMobile ? "h-6 w-6" : "")}
-                    />
-                  </Button>
-                  <DialogContent className="bg-gray-900 border-gray-700">
-                    <VisuallyHidden>
-                      <DialogTitle className="text-white font-semibold"></DialogTitle>
-                    </VisuallyHidden>
-                    <div className="space-y-4">
-                      <h3 className="text-white font-semibold">Audio Tracks</h3>
-                      <div className="space-y-2">
-                        {availableAudioTracks.map((track, index) => (
-                          <Button
-                            key={index}
-                            variant="ghost"
-                            className="w-full justify-start text-white hover:bg-white/10"
-                            onClick={() => handleAudioTrackSelect(track)}
-                          >
-                            <div className="flex items-center space-x-2">
-                              <span>{track.label}</span>
-                              {track.default && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Default
-                                </Badge>
-                              )}
-                            </div>
-                          </Button>
-                        ))}
-                      </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "text-white hover:bg-white/20",
+                        isMobile ? "w-12 h-12" : "w-10 h-10"
+                      )}
+                    >
+                      <Languages
+                        className={cn("h-5 w-5", isMobile ? "h-6 w-6" : "")}
+                      />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-gray-900 border-gray-700">
+                    <div className="p-2">
+                      <h3 className="text-white font-semibold mb-2">
+                        Audio Tracks
+                      </h3>
+                      {availableAudioTracks.map((track, index) => (
+                        <DropdownMenuItem
+                          key={index}
+                          className="text-white hover:bg-white/10"
+                          onClick={() => handleAudioTrackSelect(track)}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span>{track.label}</span>
+                            {track.default && (
+                              <Badge variant="secondary" className="text-xs">
+                                Default
+                              </Badge>
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
                     </div>
-                  </DialogContent>
-                </Dialog>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
 
               {/* Subtitle Controls */}
@@ -858,80 +868,76 @@ export function HLSPlayer({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="bg-gray-900 border-gray-700">
-                    <DropdownMenuItem
-                      className="text-white hover:bg-white/10"
-                      onClick={toggleSubtitles}
-                    >
-                      {isSubtitlesEnabled ? "Hide Subtitles" : "Show Subtitles"}
-                    </DropdownMenuItem>
-                    {availableSubtitleTracks.map((track, index) => (
+                    <div className="p-2">
+                      <h3 className="text-white font-semibold mb-2">
+                        Subtitles
+                      </h3>
                       <DropdownMenuItem
-                        key={index}
                         className="text-white hover:bg-white/10"
-                        onClick={() => handleSubtitleTrackSelect(track)}
+                        onClick={toggleSubtitles}
                       >
-                        {track.label}
+                        {isSubtitlesEnabled
+                          ? "Hide Subtitles"
+                          : "Show Subtitles"}
                       </DropdownMenuItem>
-                    ))}
+                      {availableSubtitleTracks.map((track, index) => (
+                        <DropdownMenuItem
+                          key={index}
+                          className="text-white hover:bg-white/10"
+                          onClick={() => handleSubtitleTrackSelect(track)}
+                        >
+                          {track.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
 
               {/* Quality Level Selection */}
               {availableQualityLevels.length > 0 && (
-                <Dialog
-                  open={isQualityDialogOpen}
-                  onOpenChange={setIsQualityDialogOpen}
-                >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "text-white hover:bg-white/20",
-                      isMobile ? "w-12 h-12" : "w-10 h-10"
-                    )}
-                    onClick={() => setIsQualityDialogOpen(true)}
-                  >
-                    <Settings
-                      className={cn("h-5 w-5", isMobile ? "h-6 w-6" : "")}
-                    />
-                  </Button>
-                  <DialogContent className="bg-gray-900 border-gray-700">
-                    <VisuallyHidden>
-                      <DialogTitle className="text-white font-semibold"></DialogTitle>
-                    </VisuallyHidden>
-                    <div className="space-y-4">
-                      <h3 className="text-white font-semibold">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "text-white hover:bg-white/20",
+                        isMobile ? "w-12 h-12" : "w-10 h-10"
+                      )}
+                    >
+                      <Settings
+                        className={cn("h-5 w-5", isMobile ? "h-6 w-6" : "")}
+                      />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-gray-900 border-gray-700">
+                    <div className="p-2">
+                      <h3 className="text-white font-semibold mb-2">
                         Quality Levels
                       </h3>
-                      <div className="space-y-2">
-                        {availableQualityLevels.map((level, index) => (
-                          <Button
-                            key={index}
-                            variant="ghost"
-                            className="w-full justify-start text-white hover:bg-white/10"
-                            onClick={() =>
-                              handleQualityLevelSelect(level.level)
-                            }
-                          >
-                            <div className="flex items-center space-x-2">
-                              <span>{level.name}</span>
-                            </div>
-                          </Button>
-                        ))}
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start text-white hover:bg-white/10"
-                          onClick={() => handleQualityLevelSelect(-1)}
+                      {availableQualityLevels.map((level, index) => (
+                        <DropdownMenuItem
+                          key={index}
+                          className="text-white hover:bg-white/10"
+                          onClick={() => handleQualityLevelSelect(level.level)}
                         >
                           <div className="flex items-center space-x-2">
-                            <span>Auto</span>
+                            <span>{level.name}</span>
                           </div>
-                        </Button>
-                      </div>
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuItem
+                        className="text-white hover:bg-white/10"
+                        onClick={() => handleQualityLevelSelect(-1)}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span>Auto</span>
+                        </div>
+                      </DropdownMenuItem>
                     </div>
-                  </DialogContent>
-                </Dialog>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
 
               {/* Fullscreen */}
