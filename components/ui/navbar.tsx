@@ -27,14 +27,6 @@ export function Navbar() {
     { href: "/genres", label: "Genres", icon: Grid3X3 },
   ];
 
-  const adminNavItems = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/movies", label: "Movies", icon: Film },
-    { href: "/series", label: "TV Series", icon: Tv },
-    { href: "/genres", label: "Genres", icon: Grid3X3 },
-    { href: "/scanner", label: "Scanner", icon: Search },
-  ];
-
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
