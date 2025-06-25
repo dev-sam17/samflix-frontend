@@ -1,6 +1,7 @@
 import type React from "react";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { ClerkProviderWrapper } from "@/components/providers/clerk-provider-wrapper";
 import "./globals.css";
 import { Navbar } from "@/components/ui/navbar";
 import { PWAInstallPrompt } from "@/components/ui/pwa-install-prompt";
@@ -76,28 +77,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="manifest" href="/site.webmanifest" />
-        <meta name="background-color" content="#000000" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta
-          name="apple-mobile-web-app-status-bar-style"
-          content="black-translucent"
-        />
-        <meta name="apple-mobile-web-app-title" content="Samflix" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="application-name" content="Samflix" />
-        <meta name="msapplication-TileColor" content="#000000" />
-      </head>
-      <body className={`${inter.className} bg-black text-white`}>
-        <ApiUrlProviderWrapper>
-          <ServiceWorkerRegistration />
-          <Navbar />
-          {children}
-          <PWAInstallPrompt />
-        </ApiUrlProviderWrapper>
-      </body>
-    </html>
+    <ClerkProviderWrapper>
+      <html lang="en" className="dark">
+        <head>
+          <link rel="manifest" href="/site.webmanifest" />
+          <meta name="background-color" content="#000000" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta
+            name="apple-mobile-web-app-status-bar-style"
+            content="black-translucent"
+          />
+          <meta name="apple-mobile-web-app-title" content="Samflix" />
+          <meta name="mobile-web-app-capable" content="yes" />
+          <meta name="application-name" content="Samflix" />
+          <meta name="msapplication-TileColor" content="#000000" />
+        </head>
+        <body className={`${inter.className} bg-black text-white`}>
+          <ApiUrlProviderWrapper>
+            <ServiceWorkerRegistration />
+            <Navbar />
+            {children}
+            <PWAInstallPrompt />
+          </ApiUrlProviderWrapper>
+        </body>
+      </html>
+    </ClerkProviderWrapper>
   );
 }

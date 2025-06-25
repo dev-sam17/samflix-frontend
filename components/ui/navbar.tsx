@@ -1,18 +1,33 @@
 "use client";
 
 import React, { useState } from "react";
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Film, Tv, Grid3X3, Search, Home } from "lucide-react";
+import { IconLogin } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
-import samflix from "@/public/samflix.jpg";
+import { Bebas_Neue } from "next/font/google";
+
+const bebasNeue = Bebas_Neue({
+  weight: "400",
+  subsets: ["latin"],
+  preload: true,
+});
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
   const navItems = [
+    { href: "/", label: "Home", icon: Home },
+    { href: "/movies", label: "Movies", icon: Film },
+    { href: "/series", label: "TV Series", icon: Tv },
+    { href: "/genres", label: "Genres", icon: Grid3X3 },
+  ];
+
+  const adminNavItems = [
     { href: "/", label: "Home", icon: Home },
     { href: "/movies", label: "Movies", icon: Film },
     { href: "/series", label: "TV Series", icon: Tv },
@@ -29,13 +44,27 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-800">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="text-2xl font-bold text-red-500 flex-shrink-0"
-          >
-            <Image src={samflix} alt="Logo" width={100} height={100} />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 md:hidden"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              {isOpen ? (
+                <X className="w-10 h-10" />
+              ) : (
+                <Menu className="w-10 h-10" />
+              )}
+            </Button>
+            {/* Logo */}
+            <Link
+              href="/"
+              className={`text-3xl font-bold text-red-600 flex-shrink-0 ${bebasNeue.className}`}
+            >
+              SAMFLIX
+            </Link>
+          </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
@@ -46,7 +75,7 @@ export function Navbar() {
                   key={item.href}
                   href={item.href}
                   className={`flex items-center gap-2 transition-colors ${
-                    isActive(item.href) ? "text-red-400" : "hover:text-red-400"
+                    isActive(item.href) ? "text-red-600" : "hover:text-red-600"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -54,23 +83,48 @@ export function Navbar() {
                 </Link>
               );
             })}
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button>
+                  <IconLogin className="w-4 h-4" />
+                  Sign In
+                </Button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
           </div>
 
           {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="md:hidden p-2"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </Button>
+          <div className="md:hidden flex items-center gap-2">
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button>
+                  <IconLogin className="w-4 h-4" />
+                  Sign In
+                </Button>
+              </SignInButton>
+            </SignedOut>
+          </div>
         </div>
 
         {/* Mobile Navigation */}
         {isOpen && (
           <div className="md:hidden border-t border-gray-800 py-4">
             <div className="flex flex-col space-y-4">
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <Button>
+                    <IconLogin className="w-4 h-4" />
+                    Sign In
+                  </Button>
+                </SignInButton>
+              </SignedOut>
+
               {navItems.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -79,8 +133,8 @@ export function Navbar() {
                     href={item.href}
                     className={`flex items-center gap-3 px-2 py-2 rounded-lg transition-colors ${
                       isActive(item.href)
-                        ? "text-red-400 bg-red-400/10"
-                        : "hover:text-red-400 hover:bg-red-400/5"
+                        ? "text-red-600 bg-red-600/10"
+                        : "hover:text-red-600 hover:bg-red-600/5"
                     }`}
                     onClick={() => setIsOpen(false)}
                   >
