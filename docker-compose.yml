@@ -6,6 +6,8 @@ services:
       context: .
       args:
         GITHUB_TOKEN: ${GITHUB_TOKEN}
+    networks:
+      - bond-net
     ports:
       - "3310:3000"
     env_file:
@@ -29,3 +31,7 @@ services:
       - "/media/Storage3/Movies/test-movies:/media/movies/test"
       - "/media/Storage3/Web Series/test-series:/media/series/test"
     restart: unless-stopped
+
+networks:
+  bond-net:
+    external: true
