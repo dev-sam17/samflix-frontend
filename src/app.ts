@@ -20,7 +20,7 @@ const app = express();
 export const prisma = new PrismaClient();
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: "*" }));
 
 // Request logger
 app.use(morgan("dev"));
