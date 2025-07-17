@@ -1,10 +1,18 @@
 # Use Node.js LTS as the base image
-FROM node:20-slim
+FROM node:22-slim
 
-RUN apt-get update -y && apt-get install -y openssl
+# Set noninteractive mode to avoid prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install openssl properly
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
-RUN npm install -g pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Create app directory
 WORKDIR /app
