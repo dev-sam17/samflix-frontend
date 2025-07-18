@@ -6,6 +6,14 @@ import { PrismaClient } from "@dev-sam17/prisma-client-for-samflix";
 import morgan from "morgan";
 dotenv.config({ path: ".env" });
 
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Rejection:", reason);
+});
+
 // Import routes (to be created)
 import movieRoutes from "./api/routes/movie.routes";
 import seriesRoutes from "./api/routes/series.routes";
@@ -73,7 +81,6 @@ app.use(
     res.status(500).json({ error: "Something went wrong!" });
   }
 );
-
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
