@@ -30,6 +30,15 @@ export const prisma = new PrismaClient();
 // Middleware
 app.use(cors({ origin: "*" }));
 
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
+app.get("/", (_req, res) => {
+  res.send("OK");
+});
+
 // Request logger
 app.use(morgan("dev"));
 
