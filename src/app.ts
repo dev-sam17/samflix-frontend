@@ -28,10 +28,28 @@ const app = express();
 export const prisma = new PrismaClient();
 
 // Middleware
-app.use(cors({ origin: "*" }));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  })
+);
 
-app.use((req, _res, next) => {
-  console.log(`${req.method} ${req.url}`);
+// Additional middleware to ensure CORS headers are set
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin as string || "*");
+  res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  
+  // Handle OPTIONS method
+  if (req.method === "OPTIONS") {
+    res.status(204).send();
+    return;
+  }
   next();
 });
 
