@@ -29,6 +29,7 @@ model Movie {
   genres          String[]
   runtime         Int?
   rating          Float?
+  releaseDate     DateTime
   transcodeStatus TranscodeStatus @default(PENDING)
   playPath        String          @default("")
   createdAt       DateTime        @default(now())
