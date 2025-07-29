@@ -127,6 +127,7 @@ enum Role {
 enum TranscodeStatus {
   PENDING
   IN_PROGRESS
+  QUEUED
   COMPLETED
   FAILED
 }
