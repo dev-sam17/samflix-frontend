@@ -609,3 +609,136 @@ curl -X DELETE 'https://api.samflix.com/v1/scanner/conflicts' \
 {
   "success": true
 }
+```
+
+## Transcode
+
+### Update Movie Transcode Status
+`PUT /transcode/movie/:id`
+
+**Request:**
+```
+curl -X PUT 'https://api.samflix.com/v1/transcode/movie/123' \
+  -H 'Authorization: Bearer <your_token>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "status": "COMPLETED"
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Movie transcode status updated successfully",
+  "data": {
+    "id": "string",
+    "title": "string",
+    "transcodeStatus": "COMPLETED"
+  }
+}
+```
+
+### Update Episode Transcode Status
+`PUT /transcode/episode/:id`
+
+**Request:**
+```
+curl -X PUT 'https://api.samflix.com/v1/transcode/episode/123' \
+  -H 'Authorization: Bearer <your_token>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "status": "COMPLETED"
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Episode transcode status updated successfully",
+  "data": {
+    "id": "string",
+    "title": "string",
+    "transcodeStatus": "COMPLETED"
+  }
+}
+```
+
+### Get All Items by Transcode Status
+`GET /transcode/status/:status`
+
+**Request:**
+```
+curl -X GET 'https://api.samflix.com/v1/transcode/status/PENDING' \
+  -H 'Authorization: Bearer <your_token>'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "movies": [
+      {
+        "id": "string",
+        "title": "string",
+        "transcodeStatus": "PENDING"
+      }
+    ],
+    "episodes": [
+      {
+        "id": "string",
+        "title": "string",
+        "transcodeStatus": "PENDING"
+      }
+    ]
+  }
+}
+```
+
+### Get Movies by Transcode Status
+`GET /transcode/movies/status/:status`
+
+**Request:**
+```
+curl -X GET 'https://api.samflix.com/v1/transcode/movies/status/PENDING' \
+  -H 'Authorization: Bearer <your_token>'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "string",
+      "title": "string",
+      "transcodeStatus": "PENDING"
+    }
+  ]
+}
+```
+
+### Get Episodes by Transcode Status
+`GET /transcode/episodes/status/:status`
+
+**Request:**
+```
+curl -X GET 'https://api.samflix.com/v1/transcode/episodes/status/PENDING' \
+  -H 'Authorization: Bearer <your_token>'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "string",
+      "title": "string",
+      "transcodeStatus": "PENDING"
+    }
+  ]
+}
+```

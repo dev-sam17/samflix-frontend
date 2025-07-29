@@ -23,6 +23,7 @@ class MovieController {
       const sortBy = (req.query.sortBy as string) || "title";
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "asc";
 
+
       const skip = (page - 1) * limit;
 
       // Build where clause based on filters

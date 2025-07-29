@@ -1,3 +1,6 @@
+import { TranscodeStatus } from "@dev-sam17/prisma-client-for-samflix/prisma/generated";
+
+export type TranscodeStatusType = TranscodeStatus;
 export interface MediaFile {
   fileName: string;
   filePath: string;
