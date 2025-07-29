@@ -1,38 +1,39 @@
 // Script to empty all models from the database
 require('dotenv').config(); 
-const { PrismaClient } = require('@dev-sam17/prisma-client-for-samflix');
-const prisma = new PrismaClient();
+const { prisma } = require('@dev-sam17/prisma-client-for-samflix');
+
+const logger = console.log;
 
 async function clearDatabase() {
   try {
-    console.log('Starting database cleanup...');
+    logger('Starting database cleanup...');
     
     // Delete records with relationships first to avoid foreign key constraints
     // Episodes have a relationship with TvSeries
-    console.log('Deleting all Episodes...');
+    logger('Deleting all Episodes...');
     await prisma.episode.deleteMany({});
-    console.log('✅ Episodes deleted');
+    logger('✅ Episodes deleted');
     
     // Now we can delete the rest of the models
-    console.log('Deleting all TvSeries...');
+    logger('Deleting all TvSeries...');
     await prisma.tvSeries.deleteMany({});
-    console.log('✅ TvSeries deleted');
+    logger('✅ TvSeries deleted');
     
-    console.log('Deleting all Movies...');
+    logger('Deleting all Movies...');
     await prisma.movie.deleteMany({});
-    console.log('✅ Movies deleted');
+    logger('✅ Movies deleted');
     
-    console.log('Deleting all MediaFolders...');
+    logger('Deleting all MediaFolders...');
     await prisma.mediaFolder.deleteMany({});
-    console.log('✅ MediaFolders deleted');
+    logger('✅ MediaFolders deleted');
     
-    console.log('Deleting all ScanningConflicts...');
+    logger('Deleting all ScanningConflicts...');
     await prisma.scanningConflict.deleteMany({});
-    console.log('✅ ScanningConflicts deleted');
+    logger('✅ ScanningConflicts deleted');
     
-    console.log('Database cleanup completed successfully!');
+    logger('Database cleanup completed successfully!');
   } catch (error) {
-    console.error('Error during database cleanup:', error);
+    logger('Error during database cleanup:', error);
   } finally {
     await prisma.$disconnect();
   }

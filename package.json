@@ -14,7 +14,7 @@
   "type": "commonjs",
   "dependencies": {
     "@clerk/express": "^1.7.1",
-    "@dev-sam17/prisma-client-for-samflix": "^0.1.5",
+    "@dev-sam17/prisma-client-for-samflix": "^0.1.7",
     "@types/express": "^5.0.2",
     "@types/node": "^22.15.23",
     "axios": "^1.9.0",
@@ -34,5 +34,5 @@
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2"
   },
-  "packageManager": "pnpm@10.10.0+sha512.d615db246fe70f25dcfea6d8d73dee782ce23e2245e3c4f6f888249fb568149318637dca73c2c5c8ef2a4ca0d5657fb9567188bfab47f566d1ee6ce987815c39"
+  "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5df44ee8da4c965ca0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad"
 }
