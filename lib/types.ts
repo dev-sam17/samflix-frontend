@@ -1,22 +1,23 @@
 export interface ApiResponse<T> {
-    data: T;
-    success: boolean;
-    message?: string;
-  }
-  
-  export interface PaginatedResponse<T> {
-    data: T[];
-    meta: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
-  }
+  data: T;
+  success: boolean;
+  message?: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
 
 export enum TranscodeStatus {
   PENDING = "PENDING",
   IN_PROGRESS = "IN_PROGRESS",
+  QUEUED = "QUEUED",
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",
 }

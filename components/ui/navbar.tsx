@@ -5,7 +5,7 @@ import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Film, Tv, Grid3X3, Search, Home } from "lucide-react";
+import { Menu, X, Film, Tv, Grid3X3, Search, Home, Settings } from "lucide-react";
 import { IconLogin } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Bebas_Neue } from "next/font/google";
@@ -25,6 +25,10 @@ export function Navbar() {
     { href: "/movies", label: "Movies", icon: Film },
     { href: "/series", label: "TV Series", icon: Tv },
     { href: "/genres", label: "Genres", icon: Grid3X3 },
+  ];
+
+  const adminItems = [
+    { href: "/transcoder", label: "Transcoder", icon: Settings },
   ];
 
   const isActive = (href: string) => {
@@ -84,6 +88,21 @@ export function Navbar() {
               </SignInButton>
             </SignedOut>
             <SignedIn>
+              {adminItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-2 transition-colors ${
+                      isActive(item.href) ? "text-red-600" : "hover:text-red-600"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
               <UserButton />
             </SignedIn>
           </div>
@@ -135,6 +154,26 @@ export function Navbar() {
                   </Link>
                 );
               })}
+              <SignedIn>
+                {adminItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-3 px-2 py-2 rounded-lg transition-colors ${
+                        isActive(item.href)
+                          ? "text-red-600 bg-red-600/10"
+                          : "hover:text-red-600 hover:bg-red-600/5"
+                      }`}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <Icon className="w-5 h-5" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </SignedIn>
             </div>
           </div>
         )}

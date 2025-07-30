@@ -17,7 +17,7 @@ import { Search, Filter, Grid, List, Star, Clock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/lib/api";
-import type { Movie } from "@/lib/types";
+import { TranscodeStatus, type Movie } from "@/lib/types";
 import { useApi } from "@/hooks/use-api";
 import { useApiWithContext } from "@/hooks/use-api-with-context";
 import { useApiUrl } from "@/contexts/api-url-context";
@@ -208,7 +208,6 @@ export default function MoviesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("all");
-  const { apiBaseUrl } = useApiUrl();
 
   // Use the new client API for real-time data
   const {
@@ -222,6 +221,7 @@ export default function MoviesPage() {
         ...params,
         search: searchQuery,
         genre: selectedGenre !== "all" ? selectedGenre : undefined,
+        status: "COMPLETED",
       }),
     [params, searchQuery, selectedGenre]
   );
@@ -248,6 +248,11 @@ export default function MoviesPage() {
   const handleSortChange = useCallback((value: string) => {
     setParams((prev) => ({ ...prev, page: 1, sortBy: value }));
   }, []);
+
+  const movies =
+    moviesData?.data.filter(
+      (movie) => movie.transcodeStatus === TranscodeStatus.COMPLETED
+    ) || [];
 
   return (
     <div className="min-h-screen bg-black text-white">

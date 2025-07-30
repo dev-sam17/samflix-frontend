@@ -141,6 +141,7 @@ export const clientApi = {
       page?: number;
       limit?: number;
       genre?: string;
+      status?: string;
       search?: string;
       sortBy?: string;
       sortOrder?: "asc" | "desc";
@@ -149,6 +150,7 @@ export const clientApi = {
       if (params?.page) searchParams.append("page", params.page.toString());
       if (params?.limit) searchParams.append("limit", params.limit.toString());
       if (params?.genre) searchParams.append("genre", params.genre);
+      if (params?.status) searchParams.append("status", params.status);
       if (params?.search) searchParams.append("search", params.search);
       if (params?.sortBy) searchParams.append("sortBy", params.sortBy);
       if (params?.sortOrder) searchParams.append("sortOrder", params.sortOrder);
@@ -436,6 +438,154 @@ export const clientApi = {
         "no-store",
         baseUrl
       );
+    },
+  },
+
+  transcode: {
+    // Update Movie Transcode Status
+    updateMovieStatus: async (
+      baseUrl: string,
+      id: string,
+      status: string
+    ): Promise<{
+      success: boolean;
+      message: string;
+      data: {
+        id: string;
+        title: string;
+        transcodeStatus: string;
+      };
+    }> => {
+      return apiRequest<{
+        success: boolean;
+        message: string;
+        data: {
+          id: string;
+          title: string;
+          transcodeStatus: string;
+        };
+      }>(
+        `/api/transcode/movie/${id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ status }),
+        },
+        "no-store",
+        baseUrl
+      );
+    },
+
+    // Update Episode Transcode Status
+    updateEpisodeStatus: async (
+      baseUrl: string,
+      id: string,
+      status: string
+    ): Promise<{
+      success: boolean;
+      message: string;
+      data: {
+        id: string;
+        title: string;
+        transcodeStatus: string;
+      };
+    }> => {
+      return apiRequest<{
+        success: boolean;
+        message: string;
+        data: {
+          id: string;
+          title: string;
+          transcodeStatus: string;
+        };
+      }>(
+        `/api/transcode/episode/${id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ status }),
+        },
+        "no-store",
+        baseUrl
+      );
+    },
+
+    // Get All Items by Transcode Status
+    getAllByStatus: async (
+      baseUrl: string,
+      status: string
+    ): Promise<{
+      success: boolean;
+      data: {
+        movies: Array<{
+          id: string;
+          title: string;
+          transcodeStatus: string;
+        }>;
+        episodes: Array<{
+          id: string;
+          title: string;
+          transcodeStatus: string;
+        }>;
+      };
+    }> => {
+      return apiRequest<{
+        success: boolean;
+        data: {
+          movies: Array<{
+            id: string;
+            title: string;
+            transcodeStatus: string;
+          }>;
+          episodes: Array<{
+            id: string;
+            title: string;
+            transcodeStatus: string;
+          }>;
+        };
+      }>(`/api/transcode/status/${status}`, {}, "no-store", baseUrl);
+    },
+
+    // Get Movies by Transcode Status
+    getMoviesByStatus: async (
+      baseUrl: string,
+      status: string
+    ): Promise<{
+      success: boolean;
+      data: Array<{
+        id: string;
+        title: string;
+        transcodeStatus: string;
+      }>;
+    }> => {
+      return apiRequest<{
+        success: boolean;
+        data: Array<{
+          id: string;
+          title: string;
+          transcodeStatus: string;
+        }>;
+      }>(`/api/transcode/movies/status/${status}`, {}, "no-store", baseUrl);
+    },
+
+    // Get Episodes by Transcode Status
+    getEpisodesByStatus: async (
+      baseUrl: string,
+      status: string
+    ): Promise<{
+      success: boolean;
+      data: Array<{
+        id: string;
+        title: string;
+        transcodeStatus: string;
+      }>;
+    }> => {
+      return apiRequest<{
+        success: boolean;
+        data: Array<{
+          id: string;
+          title: string;
+          transcodeStatus: string;
+        }>;
+      }>(`/api/transcode/episodes/status/${status}`, {}, "no-store", baseUrl);
     },
   },
 

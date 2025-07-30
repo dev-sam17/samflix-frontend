@@ -14,7 +14,7 @@ const CLOUDFLARE_API_URL =
 const LOCAL_API_URL =
   process.env.NEXT_PUBLIC_API_URL_LOCAL || "http://localhost:3000";
 
-type ApiUrlContextType = {
+export type ApiUrlContextType = {
   apiBaseUrl: string;
   setApiBaseUrl: (url: string) => void;
 };

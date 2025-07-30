@@ -11,7 +11,7 @@ import { Search, Play, Star, Calendar, Clock, Film, Tv } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/lib/api";
-import type { Movie, TvSeries } from "@/lib/types";
+import { TranscodeStatus, type Movie, type TvSeries } from "@/lib/types";
 import { useApiWithContext } from "@/hooks/use-api-with-context";
 import { useApiUrl } from "@/contexts/api-url-context";
 import { runtimeFormat } from "@/lib/utils";
@@ -265,8 +265,13 @@ export default function HomePage() {
     }
   };
 
-  const featuredMovie = moviesData?.data?.[0] || null;
-  const featuredMovies = moviesData?.data || [];
+  const movies =
+    moviesData?.data.filter(
+      (movie) => movie.transcodeStatus === TranscodeStatus.COMPLETED
+    ) || [];
+
+  const featuredMovie = movies[0] || null;
+  const featuredMovies = movies || [];
   const featuredSeries = seriesData?.data || [];
 
   return (
