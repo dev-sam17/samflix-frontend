@@ -20,9 +20,9 @@ class MovieController {
       const limit = parseInt(req.query.limit as string) || 10;
       const genre = req.query.genre as string;
       const search = req.query.search as string;
+      const status = req.query.status as string;
       const sortBy = (req.query.sortBy as string) || "title";
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "asc";
-
 
       const skip = (page - 1) * limit;
 
@@ -36,6 +36,9 @@ class MovieController {
           { title: { contains: search, mode: "insensitive" } },
           { overview: { contains: search, mode: "insensitive" } },
         ];
+      }
+      if (status) {
+        where.transcodeStatus = status;
       }
 
       // Get total count for pagination
