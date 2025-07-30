@@ -60,6 +60,10 @@ interface HLSPlayerProps {
   autoPlay?: boolean;
   audioTracks?: AudioTrack[];
   subtitleTracks?: SubtitleTrack[];
+  tmdbId?: string;
+  clerkId?: string;
+  initialTime?: number;
+  onTimeUpdate?: (currentTime: number) => void;
 }
 
 export function HLSPlayer({
@@ -68,11 +72,16 @@ export function HLSPlayer({
   poster,
   onBack,
   autoPlay = false,
+  tmdbId,
+  clerkId,
+  initialTime = 0,
+  onTimeUpdate,
 }: HLSPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const progressSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -154,6 +163,11 @@ export function HLSPlayer({
           name: `${level.height}p (${Math.round(level.bitrate / 1000)}k)`,
         }));
         setAvailableQualityLevels(levels);
+        
+        // Set initial time if provided (for resume playback)
+        if (initialTime > 0) {
+          video.currentTime = initialTime;
+        }
 
         if (autoPlay) {
           video.play().catch(console.error);
@@ -266,7 +280,27 @@ export function HLSPlayer({
     }
   }, [isFullscreen]);
 
-  // Video event listeners
+  // Progress saving interval reference
+  const saveProgress = useCallback(
+    (time: number) => {
+      if (!tmdbId || !clerkId) return;
+      
+      // Call the onTimeUpdate callback if provided
+      if (onTimeUpdate) {
+        onTimeUpdate(time);
+      }
+      
+      // We don't need to save progress for very short watches (less than 10 seconds)
+      // or if we're near the end of the video (last 30 seconds)
+      if (time < 10 || (duration > 0 && time > duration - 30)) return;
+      
+      console.log(`Saving progress: ${time} seconds for ${tmdbId}`);
+      // Progress saving is handled by the parent component through onTimeUpdate
+    },
+    [tmdbId, clerkId, onTimeUpdate, duration]
+  );
+
+  // Video event handlers
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -276,15 +310,31 @@ export function HLSPlayer({
     };
 
     const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
+      const newTime = video.currentTime;
+      setCurrentTime(newTime);
     };
 
     const handlePlay = () => {
       setIsPlaying(true);
+      setIsBuffering(false);
+      
+      // Start periodic progress saving when playing
+      if (tmdbId && clerkId && !progressSaveIntervalRef.current) {
+        progressSaveIntervalRef.current = setInterval(() => {
+          if (video.currentTime > 0) {
+            saveProgress(video.currentTime);
+          }
+        }, 30000); // Save every 30 seconds while playing
+      }
     };
 
     const handlePause = () => {
       setIsPlaying(false);
+      
+      // Save progress when paused
+      if (video.currentTime > 0) {
+        saveProgress(video.currentTime);
+      }
     };
 
     const handleWaiting = () => {
@@ -299,6 +349,13 @@ export function HLSPlayer({
       setVolume(video.volume);
       setIsMuted(video.muted);
     };
+    
+    // Handle beforeunload to save progress when leaving the page
+    const handleBeforeUnload = () => {
+      if (video.currentTime > 0) {
+        saveProgress(video.currentTime);
+      }
+    };
 
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
     video.addEventListener("timeupdate", handleTimeUpdate);
@@ -307,8 +364,19 @@ export function HLSPlayer({
     video.addEventListener("waiting", handleWaiting);
     video.addEventListener("canplay", handleCanPlay);
     video.addEventListener("volumechange", handleVolumeChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
+      // Clear interval when component unmounts
+      if (progressSaveIntervalRef.current) {
+        clearInterval(progressSaveIntervalRef.current);
+      }
+      
+      // Save progress one last time when unmounting
+      if (video.currentTime > 0) {
+        saveProgress(video.currentTime);
+      }
+      
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("timeupdate", handleTimeUpdate);
       video.removeEventListener("play", handlePlay);
@@ -316,8 +384,9 @@ export function HLSPlayer({
       video.removeEventListener("waiting", handleWaiting);
       video.removeEventListener("canplay", handleCanPlay);
       video.removeEventListener("volumechange", handleVolumeChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, []);
+  }, [saveProgress, tmdbId, clerkId]);
 
   // Fullscreen handling with mobile optimization
   useEffect(() => {

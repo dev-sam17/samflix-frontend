@@ -15,6 +15,8 @@ import { TranscodeStatus, type Movie, type TvSeries } from "@/lib/types";
 import { useApiWithContext } from "@/hooks/use-api-with-context";
 import { useApiUrl } from "@/contexts/api-url-context";
 import { runtimeFormat } from "@/lib/utils";
+import { ContinueWatching } from "@/components/continue-watching";
+import { useUser } from "@clerk/nextjs";
 
 function HeroSection({ featuredMovie }: { featuredMovie: Movie | null }) {
   if (!featuredMovie) {
@@ -300,6 +302,9 @@ export default function HomePage() {
             </div>
           </section>
         )}
+        
+        {/* Continue Watching (only for authenticated users) */}
+        <ContinueWatching />
 
         {/* Featured Movies */}
         <section className="space-y-6">

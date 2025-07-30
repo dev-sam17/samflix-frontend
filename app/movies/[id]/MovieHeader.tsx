@@ -5,21 +5,111 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { HLSPlayer } from "@/components/hls-player";
-import { Play, Star, Clock } from "lucide-react";
+import { Play, Star, Clock, RotateCcw } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
-import { api } from "@/lib/api";
+import { useState, useEffect, useCallback } from "react";
+import { api, clientApi } from "@/lib/api";
 import { TranscodeStatus, type Movie } from "@/lib/types";
 import { runtimeFormat } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter, usePathname } from "next/navigation";
-import { SignInButton } from "@clerk/nextjs";
+import { SignInButton, useUser } from "@clerk/nextjs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export function MovieHeader({ movie }: { movie: Movie }) {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [playbackProgress, setPlaybackProgress] = useState<number | null>(null);
+  const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { isAuthenticated } = useAuth();
+  const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Fetch playback progress when component mounts
+  useEffect(() => {
+    const fetchProgress = async () => {
+      if (!isAuthenticated || !user || !movie.tmdbId) return;
+
+      try {
+        setIsLoading(true);
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+        const progress = await clientApi.progress.getProgress(
+          baseUrl,
+          user.id,
+          movie.id.toString()
+        );
+        if (progress) {
+          setPlaybackProgress(progress.currentTime);
+        }
+      } catch (error) {
+        console.error("Error fetching playback progress:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProgress();
+  }, [isAuthenticated, user, movie.id]);
+
+  // Handle saving playback progress
+  const handleTimeUpdate = useCallback(
+    async (currentTime: number) => {
+      if (!isAuthenticated || !user || !movie.id) return;
+
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+        console.log({ tmdbId: movie.id });
+        await clientApi.progress.saveProgress(
+          baseUrl,
+          user.id,
+          movie.id.toString(),
+          currentTime
+        );
+      } catch (error) {
+        console.error("Error saving playback progress:", error);
+      }
+    },
+    [isAuthenticated, user, movie.id]
+  );
+
+  // Handle deleting playback progress
+  const handleDeleteProgress = useCallback(async () => {
+    if (!isAuthenticated || !user || !movie.id) return;
+
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      await clientApi.progress.deleteProgress(
+        baseUrl,
+        user.id,
+        movie.id.toString()
+      );
+      setPlaybackProgress(null);
+      toast.success("Playback progress reset");
+    } catch (error) {
+      console.error("Error deleting playback progress:", error);
+      toast.error("Failed to reset playback progress");
+    }
+  }, [isAuthenticated, user, movie.tmdbId]);
+
+  // Handle play button click
+  const handlePlayClick = useCallback(() => {
+    if (playbackProgress && playbackProgress > 0) {
+      setIsResumeDialogOpen(true);
+    } else {
+      setIsPlayerOpen(true);
+    }
+  }, [playbackProgress]);
 
   return (
     <>
@@ -109,30 +199,40 @@ export function MovieHeader({ movie }: { movie: Movie }) {
               )}
 
               <div className="flex flex-wrap gap-3 pt-4">
-                {movie.playPath &&
-                  movie.transcodeStatus === TranscodeStatus.COMPLETED && (
-                    <>
-                      {isAuthenticated ? (
-                        <Button
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                          onClick={() => setIsPlayerOpen(true)}
-                        >
-                          <Play className="w-4 h-4 mr-2" />
-                          Play
-                        </Button>
-                      ) : (
-                        <SignInButton
-                          mode="modal"
-                          fallbackRedirectUrl={window.location.href}
-                        >
-                          <Button className="bg-red-600 hover:bg-red-700 text-white">
-                            <Play className="w-4 h-4 mr-2" />
-                            Play
-                          </Button>
-                        </SignInButton>
-                      )}
-                    </>
+                <>
+                  {isAuthenticated ? (
+                    <Button
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      onClick={handlePlayClick}
+                      disabled={isLoading}
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      {isLoading ? "Loading..." : "Play"}
+                    </Button>
+                  ) : (
+                    <SignInButton
+                      mode="modal"
+                      fallbackRedirectUrl={window.location.href}
+                    >
+                      <Button className="bg-red-600 hover:bg-red-700 text-white">
+                        <Play className="w-4 h-4 mr-2" />
+                        Play
+                      </Button>
+                    </SignInButton>
                   )}
+                  {playbackProgress !== null &&
+                    playbackProgress > 0 &&
+                    isAuthenticated && (
+                      <Button
+                        variant="outline"
+                        className="text-gray-300 border-gray-700 hover:bg-gray-800"
+                        onClick={handleDeleteProgress}
+                      >
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Reset Progress
+                      </Button>
+                    )}
+                </>
                 {(movie.transcodeStatus === TranscodeStatus.IN_PROGRESS ||
                   movie.transcodeStatus === TranscodeStatus.PENDING) && (
                   <Button
@@ -144,13 +244,6 @@ export function MovieHeader({ movie }: { movie: Movie }) {
                     UPLOADING
                   </Button>
                 )}
-                {/* <Button
-                  variant="outline"
-                  className="border-gray-600 text-gray-300 hover:bg-white/10"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </Button> */}
               </div>
             </div>
           </div>
@@ -175,6 +268,10 @@ export function MovieHeader({ movie }: { movie: Movie }) {
             }
             onBack={() => setIsPlayerOpen(false)}
             autoPlay={true}
+            tmdbId={movie.id.toString()}
+            clerkId={user?.id}
+            initialTime={playbackProgress || 0}
+            onTimeUpdate={handleTimeUpdate}
             audioTracks={[
               {
                 kind: "audio",
@@ -196,6 +293,38 @@ export function MovieHeader({ movie }: { movie: Movie }) {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Resume Playback Dialog */}
+      <AlertDialog
+        open={isResumeDialogOpen}
+        onOpenChange={setIsResumeDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resume Playback</AlertDialogTitle>
+            <AlertDialogDescription>
+              Would you like to resume watching "{movie.title}" from where you
+              left off (
+              {playbackProgress ? Math.floor(playbackProgress / 60) : 0}m
+              {playbackProgress ? Math.floor(playbackProgress % 60) : 0}s)?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteProgress}>
+              Start Over
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setIsResumeDialogOpen(false);
+                setIsPlayerOpen(true);
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Resume
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

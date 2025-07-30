@@ -589,6 +589,76 @@ export const clientApi = {
     },
   },
 
+  progress: {
+    // Save video progress
+    saveProgress: async (
+      baseUrl: string,
+      clerkId: string,
+      tmdbId: string,
+      currentTime: number
+    ): Promise<boolean> => {
+      return apiRequest<boolean>(
+        `/api/progress`,
+        {
+          method: "POST",
+          body: JSON.stringify({ clerkId, tmdbId, currentTime }),
+        },
+        "no-store",
+        baseUrl
+      );
+    },
+
+    // Get progress for specific video
+    getProgress: async (
+      baseUrl: string,
+      clerkId: string,
+      tmdbId: string
+    ): Promise<{ currentTime: number; updatedAt: string } | null> => {
+      try {
+        return await apiRequest<{ currentTime: number; updatedAt: string }>(
+          `/api/progress/${clerkId}/${tmdbId}`,
+          {},
+          "no-store",
+          baseUrl
+        );
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+          return null;
+        }
+        throw error;
+      }
+    },
+
+    // Get all progress for a user
+    getAllProgress: async (
+      baseUrl: string,
+      clerkId: string
+    ): Promise<Array<{ tmdbId: string; currentTime: number; updatedAt: string }>> => {
+      return apiRequest<Array<{ tmdbId: string; currentTime: number; updatedAt: string }>>(
+        `/api/progress/${clerkId}`,
+        {},
+        "no-store",
+        baseUrl
+      );
+    },
+
+    // Delete progress
+    deleteProgress: async (
+      baseUrl: string,
+      clerkId: string,
+      tmdbId: string
+    ): Promise<boolean> => {
+      return apiRequest<boolean>(
+        `/api/progress/${clerkId}/${tmdbId}`,
+        {
+          method: "DELETE",
+        },
+        "no-store",
+        baseUrl
+      );
+    },
+  },
+
   utils: {
     // Get TMDB image URL
     getTmdbImageUrl: (
