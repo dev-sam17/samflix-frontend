@@ -22,6 +22,7 @@ import scannerRoutes from "./api/routes/scanner.routes";
 import streamRoutes from "./api/routes/stream.routes";
 import webhookRoutes from "./api/routes/webhook.routes";
 import transcodeRoutes from "./api/routes/transcode.routes";
+import progressRoutes from "./api/routes/progress.routes";
 
 // Create Express app
 const app = express();
@@ -86,6 +87,7 @@ app.use("/api/series", seriesRoutes);
 app.use("/api/scanner", scannerRoutes);
 app.use("/api/stream", streamRoutes);
 app.use("/api/transcode", transcodeRoutes);
+app.use("/api/progress", progressRoutes);
 
 // Serve media folder as static content
 // In Docker container, media folder is one level up from the project root

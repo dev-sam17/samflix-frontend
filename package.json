@@ -16,6 +16,7 @@
     "@clerk/express": "^1.7.1",
     "@dev-sam17/prisma-client-for-samflix": "^0.1.7",
     "@types/express": "^5.0.2",
+    "@types/ioredis": "^5.0.0",
     "@types/node": "^22.15.23",
     "axios": "^1.9.0",
     "chokidar": "^4.0.3",
@@ -23,9 +24,11 @@
     "cross-env": "^7.0.3",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "ioredis": "^5.6.1",
     "morgan": "^1.10.0",
     "node-cron": "^4.0.7",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "zod": "^4.0.14"
   },
   "devDependencies": {
     "@types/cors": "^2.8.18",
