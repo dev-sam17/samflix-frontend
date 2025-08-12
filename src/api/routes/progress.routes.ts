@@ -1,4 +1,4 @@
-import express from "express";
+import { createSmartCacheRouter } from '../middleware/cache-invalidation-middleware';
 import { progressController } from "../controllers/progress.controller";
 import {
   validateSaveProgress,
@@ -6,7 +6,13 @@ import {
   validateClerkIdParam,
 } from "../validators/progress.validator";
 
-const router = express.Router();
+// Create a router with caching for GET routes and automatic cache invalidation for POST/PUT/DELETE routes
+const router = createSmartCacheRouter(
+  // Cache options for GET routes
+  { ttl: 1800 }, // 30 minutes cache for progress data
+  // Invalidation options for data-modifying routes
+  { resourceType: 'progress' }
+);
 
 /**
  * @route POST /api/progress

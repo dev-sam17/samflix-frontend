@@ -1,7 +1,8 @@
-import { Router } from 'express';
+import { createSmartCacheRouter } from '../middleware/cache-invalidation-middleware';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../app';
 import { scannerService } from '../../services/scanner/scanner.service';
+import { cacheInvalidation } from '../middleware/cache-invalidation';
 
 type AsyncRouteHandler<P = any, ResBody = any, ReqBody = any> = (
   req: Request<P, ResBody, ReqBody>,
@@ -38,7 +39,13 @@ interface ResolveConflictBody {
 }
 
 // Start a manual scan
-const router = Router();
+// Create a router with caching for GET routes and automatic cache invalidation for POST/PUT/DELETE routes
+const router = createSmartCacheRouter(
+  // Cache options for GET routes
+  { ttl: 1800 }, // 30 minutes cache
+  // Invalidation options for data-modifying routes
+  { resourceType: 'scanner' }
+);
 
 const scanHandler: AsyncRouteHandler = async (_req, res) => {
   try {

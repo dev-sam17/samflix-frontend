@@ -1,7 +1,13 @@
-import { Router } from "express";
+import { createSmartCacheRouter } from '../middleware/cache-invalidation-middleware';
 import { streamController } from "../controllers/stream.controller";
 
-const router = Router();
+// Create a router with caching for GET routes and automatic cache invalidation for POST/PUT/DELETE routes
+const router = createSmartCacheRouter(
+  // Cache options for GET routes - short TTL for streaming content
+  { ttl: 300 }, // 5 minutes cache
+  // Invalidation options for data-modifying routes
+  { resourceType: 'stream' }
+);
 
 // HLS streaming endpoints
 router.get("/movies/:id/hls", streamController.streamMovieHLS);

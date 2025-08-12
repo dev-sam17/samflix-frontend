@@ -1,15 +1,21 @@
-import { Router, Request, Response, NextFunction } from 'express';
 import { movieController } from '../controllers/movie.controller';
+import { createSmartCacheRouter } from '../middleware/cache-invalidation-middleware';
+import { RequestHandler } from 'express';
 
-type AsyncRequestHandler = (req: Request, res: Response, next: NextFunction) => Promise<void> | void;
+// Create a router with caching for GET routes and automatic cache invalidation for POST/PUT/DELETE routes
+const router = createSmartCacheRouter(
+  // Cache options for GET routes
+  { ttl: 3600 },
+  // Invalidation options for data-modifying routes
+  { resourceType: 'movie' }
+);
 
-const router = Router();
-
-// Movie routes
-router.get('/', (req, res, next) => (movieController.getAllMovies as AsyncRequestHandler)(req, res, next));
-router.get('/:id', (req, res, next) => (movieController.getMovieById as AsyncRequestHandler)(req, res, next));
-router.get('/search/:query', (req, res, next) => (movieController.searchMovies as AsyncRequestHandler)(req, res, next));
-router.get('/genre/:genre', (req, res, next) => (movieController.getMoviesByGenre as AsyncRequestHandler)(req, res, next));
-router.get('/genres/all', (req, res, next) => (movieController.getAllGenres as AsyncRequestHandler)(req, res, next));
+// Movie routes (caching is automatically applied to all GET routes)
+// Note: The order matters for Express routes - more specific routes should come before generic ones
+router.get('/genres/all', movieController.getAllGenres as RequestHandler);
+router.get('/genre/:genre', movieController.getMoviesByGenre as RequestHandler);
+router.get('/search/:query', movieController.searchMovies as RequestHandler);
+router.get('/:id', movieController.getMovieById as RequestHandler);
+router.get('/', movieController.getAllMovies as RequestHandler);
 
 export default router;

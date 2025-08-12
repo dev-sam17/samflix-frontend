@@ -1,10 +1,16 @@
-import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { transcodeController } from "../controllers/transcode.controller";
+import { createSmartCacheRouter } from '../middleware/cache-invalidation-middleware';
 
 type RequestHandler = (req: Request, res: Response, next: NextFunction) => void;
 
-const router = Router();
+// Create a router with caching for GET routes and automatic cache invalidation for POST/PUT/DELETE routes
+const router = createSmartCacheRouter(
+  // Cache options for GET routes
+  { ttl: 3600 },
+  // Invalidation options for data-modifying routes
+  { resourceType: 'transcode' }
+);
 
 /**
  * @route PUT /api/transcode/movie/:id
