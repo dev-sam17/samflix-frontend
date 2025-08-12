@@ -19,7 +19,6 @@ process.on("unhandledRejection", (reason) => {
 import movieRoutes from "./api/routes/movie.routes";
 import seriesRoutes from "./api/routes/series.routes";
 import scannerRoutes from "./api/routes/scanner.routes";
-import streamRoutes from "./api/routes/stream.routes";
 import webhookRoutes from "./api/routes/webhook.routes";
 import transcodeRoutes from "./api/routes/transcode.routes";
 import progressRoutes from "./api/routes/progress.routes";
@@ -85,7 +84,6 @@ app.use(express.json());
 app.use("/api/movies", movieRoutes);
 app.use("/api/series", seriesRoutes);
 app.use("/api/scanner", scannerRoutes);
-app.use("/api/stream", streamRoutes);
 app.use("/api/transcode", transcodeRoutes);
 app.use("/api/progress", progressRoutes);
 
