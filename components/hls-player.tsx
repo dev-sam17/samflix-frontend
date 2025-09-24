@@ -143,8 +143,58 @@ export function HLSPlayer({
     if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
+        lowLatencyMode: false, // Disable for network tunnel stability
         backBufferLength: 90,
+        
+        // Buffer configuration optimized for network tunnels
+        maxBufferLength: 60, // Increase buffer for tunnel latency
+        maxMaxBufferLength: 120, // Allow larger buffer when needed
+        maxBufferSize: 100 * 1000 * 1000, // 100MB buffer size
+        maxBufferHole: 1.0, // More tolerance for buffer gaps
+        
+        // Fragment loading - optimized for high latency networks
+        fragLoadingTimeOut: 30000, // 30 seconds for tunnel delays
+        fragLoadingMaxRetry: 8, // More retries for unstable connections
+        fragLoadingRetryDelay: 2000, // 2 second delay between retries
+        fragLoadingMaxRetryTimeout: 120000, // 2 minute max retry timeout
+        
+        // Manifest loading - handle tunnel delays
+        manifestLoadingTimeOut: 15000, // 15 seconds
+        manifestLoadingMaxRetry: 6,
+        manifestLoadingRetryDelay: 2000,
+        manifestLoadingMaxRetryTimeout: 60000,
+        
+        // Level loading configuration
+        levelLoadingTimeOut: 15000,
+        levelLoadingMaxRetry: 6,
+        levelLoadingRetryDelay: 2000,
+        levelLoadingMaxRetryTimeout: 60000,
+        
+        // Adaptive bitrate - conservative for tunnels
+        abrEwmaFastLive: 5.0, // Slower adaptation
+        abrEwmaSlowLive: 15.0, // Much slower for stability
+        abrEwmaFastVoD: 5.0,
+        abrEwmaSlowVoD: 15.0,
+        abrEwmaDefaultEstimate: 200000, // Conservative 200kbps estimate
+        abrBandWidthFactor: 0.8, // Use only 80% of detected bandwidth
+        abrBandWidthUpFactor: 0.6, // Very conservative upward switching
+        abrMaxWithRealBitrate: true, // Use real bitrate measurements
+        
+        // Start configuration
+        startLevel: 0, // Start with lowest quality for tunnels
+        capLevelToPlayerSize: true,
+        
+        // Network tunnel optimizations
+        liveSyncDurationCount: 5, // More segments for live sync
+        liveMaxLatencyDurationCount: 10, // Higher latency tolerance
+        liveDurationInfinity: true, // Handle infinite live streams
+        
+        // Error recovery
+        enableSoftwareAES: true, // Software decryption fallback
+        enableCEA708Captions: true,
+        
+        // Debug (enable for troubleshooting)
+        debug: false,
       });
       hlsRef.current = hls;
 
@@ -222,23 +272,101 @@ export function HLSPlayer({
         setCurrentQualityLevel(data.level);
       });
 
+      // Monitor fragment loading for network tunnel performance
+      hls.on(Hls.Events.FRAG_LOADED, (event, data: any) => {
+        try {
+          const stats = data.frag?.stats || data.stats;
+          if (stats && stats.loading) {
+            const loadTime = stats.loading.end - stats.loading.start;
+            const fragSize = stats.total || stats.loaded || 0;
+            
+            // Log slow fragments for tunnel monitoring
+            if (loadTime > 5000) { // More than 5 seconds
+              const bandwidth = fragSize > 0 ? (fragSize * 8) / (loadTime / 1000) : 0;
+              console.log(`Slow fragment load: ${loadTime}ms, bandwidth: ${Math.round(bandwidth/1000)}kbps`);
+            }
+          }
+        } catch (e) {
+          // Ignore stats errors
+        }
+      });
+
+      // Handle buffer events for tunnel optimization
+      hls.on(Hls.Events.BUFFER_APPENDED, (event, data) => {
+        // Monitor buffer health
+        const buffered = video.buffered;
+        if (buffered.length > 0) {
+          const bufferEnd = buffered.end(buffered.length - 1);
+          const bufferLength = bufferEnd - video.currentTime;
+          
+          // Log buffer status for tunnel debugging
+          if (bufferLength < 5) {
+            console.log(`Low buffer: ${bufferLength.toFixed(2)}s`);
+          }
+        }
+      });
+
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.log("HLS Error:", data);
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.log("Network error, trying to recover...");
-              hls.startLoad();
+        
+        // Handle non-fatal errors for network tunnels
+        if (!data.fatal) {
+          switch (data.details) {
+            case 'bufferStalledError':
+              console.log("Buffer stalled, waiting for recovery...");
+              // Let HLS handle buffer stalls automatically
               break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              console.log("Media error, trying to recover...");
-              hls.recoverMediaError();
+            case 'fragLoadTimeOut':
+              console.log("Fragment timeout, will retry automatically...");
+              // HLS will retry based on our configuration
+              break;
+            case 'fragLoadError':
+              console.log("Fragment load error, retrying...");
               break;
             default:
-              console.log("Unrecoverable error");
-              hls.destroy();
-              break;
+              console.log("Non-fatal error:", data.details);
           }
+          return;
+        }
+        
+        // Handle fatal errors with progressive recovery
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            console.log("Fatal network error, attempting recovery...");
+            setTimeout(() => {
+              try {
+                hls.startLoad();
+              } catch (e) {
+                console.log("Recovery failed, reloading source...");
+                hls.loadSource(src);
+              }
+            }, 3000); // Wait 3 seconds before recovery
+            break;
+            
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            console.log("Fatal media error, attempting recovery...");
+            try {
+              hls.recoverMediaError();
+            } catch (e) {
+              console.log("Media recovery failed, restarting...");
+              setTimeout(() => {
+                hls.loadSource(src);
+              }, 2000);
+            }
+            break;
+            
+          default:
+            console.log("Unrecoverable error, attempting full restart...");
+            setTimeout(() => {
+              try {
+                hls.destroy();
+                // Reinitialize HLS after destruction
+                window.location.reload();
+              } catch (e) {
+                console.log("Full restart failed");
+              }
+            }, 5000);
+            break;
         }
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {

@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { useAuthContext } from "@/contexts/auth-context";
 import { SignInButton } from "@clerk/nextjs";
+import { NetworkStatus } from "@/components/network-status";
 
 interface AdminFeature {
   id: string;
@@ -280,6 +281,17 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Network Status */}
+        <section className="mb-8">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <HardDrive className="w-5 h-5 text-green-400" />
+            Network Configuration
+          </h2>
+          <div className="max-w-md">
+            <NetworkStatus />
+          </div>
+        </section>
 
         {/* Media Management */}
         <section className="mb-8">

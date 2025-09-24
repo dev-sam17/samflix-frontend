@@ -14,6 +14,7 @@ import { runtimeFormat } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter, usePathname } from "next/navigation";
 import { SignInButton, useUser } from "@clerk/nextjs";
+import { useApiUrl } from "@/contexts/api-url-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState<number | null>(null);
   const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(false);
+  const { apiBaseUrl } = useApiUrl();
   const [isLoading, setIsLoading] = useState(false);
   const { isAuthenticated } = useAuth();
   const { user } = useUser();
@@ -258,7 +260,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
           </VisuallyHidden>
           <HLSPlayer
             src={new URL(
-              process.env.NEXT_PUBLIC_API_URL_LOCAL + movie.playPath
+              apiBaseUrl + movie.playPath
             ).toString()}
             title={movie.title}
             poster={

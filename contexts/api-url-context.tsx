@@ -7,16 +7,20 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
+import { networkDetector, NetworkConfig } from "@/lib/network-detector";
 
 // Provide default fallback values if environment variables are undefined
 const CLOUDFLARE_API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://api.samflix.dev";
+  process.env.NEXT_PUBLIC_API_URL || "https://samflix-be.devsam.in";
 const LOCAL_API_URL =
-  process.env.NEXT_PUBLIC_API_URL_LOCAL || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_API_URL_LOCAL || "http://192.168.29.41:3310";
 
 export type ApiUrlContextType = {
   apiBaseUrl: string;
   setApiBaseUrl: (url: string) => void;
+  networkConfig: NetworkConfig | null;
+  isLocalNetwork: boolean;
+  recheckNetwork: () => Promise<void>;
 };
 
 const ApiUrlContext = createContext<ApiUrlContextType | undefined>(undefined);
@@ -33,43 +37,49 @@ export function ApiUrlProvider({
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(
     initialApiUrl || CLOUDFLARE_API_URL
   );
+  const [networkConfig, setNetworkConfig] = useState<NetworkConfig | null>(null);
+  const [isLocalNetwork, setIsLocalNetwork] = useState<boolean>(false);
+
+  const recheckNetwork = async () => {
+    try {
+      const config = await networkDetector.forceRecheck();
+      setNetworkConfig(config);
+      setIsLocalNetwork(config.isLocal);
+      setApiBaseUrl(config.isLocal ? config.localUrl : config.tunnelUrl);
+      console.log('Network rechecked:', config);
+    } catch (error) {
+      console.error('Network recheck failed:', error);
+      setApiBaseUrl(CLOUDFLARE_API_URL);
+    }
+  };
 
   useEffect(() => {
-    const checkConnection = async () => {
-      // Skip local API check in production or when running on HTTPS
-      const isProduction = process.env.NODE_ENV === 'production';
-      const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
-      
-      if (isProduction || isHttps) {
-        // In production or HTTPS, use the cloud API directly
-        setApiBaseUrl(CLOUDFLARE_API_URL);
-        return;
-      }
-      
+    const initializeNetwork = async () => {
       try {
-        if (LOCAL_API_URL && !LOCAL_API_URL.includes('localhost') && !LOCAL_API_URL.includes('127.0.0.1')) {
-          // Only try local API if it's not localhost (to avoid mixed content)
-          const response = await fetch(`${LOCAL_API_URL}/health`, {
-            signal: AbortSignal.timeout(5000) // 5 second timeout
-          });
-          if (response.ok) {
-            setApiBaseUrl(LOCAL_API_URL);
-            return;
-          }
-        }
+        const config = await networkDetector.detectNetwork();
+        setNetworkConfig(config);
+        setIsLocalNetwork(config.isLocal);
+        setApiBaseUrl(config.isLocal ? config.localUrl : config.tunnelUrl);
+        console.log('Network initialized:', config);
       } catch (error) {
-        console.warn('Local API not available, using cloud API:', error);
+        console.error('Network initialization failed:', error);
+        setApiBaseUrl(CLOUDFLARE_API_URL);
       }
-      
-      // Fallback to cloud API
-      setApiBaseUrl(CLOUDFLARE_API_URL);
     };
     
-    checkConnection();
+    initializeNetwork();
   }, []);
 
   return (
-    <ApiUrlContext.Provider value={{ apiBaseUrl, setApiBaseUrl }}>
+    <ApiUrlContext.Provider 
+      value={{ 
+        apiBaseUrl, 
+        setApiBaseUrl, 
+        networkConfig, 
+        isLocalNetwork, 
+        recheckNetwork 
+      }}
+    >
       {children}
     </ApiUrlContext.Provider>
   );
