@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { transcodeService } from "../../services/transcode/transcode.service";
 import type { TranscodeStatusType } from "../../types/media.types";
-import { cacheInvalidation } from "../middleware/cache-invalidation";
 
 type AsyncRequestHandler = (
   req: Request,
@@ -28,8 +27,6 @@ class TranscodeController {
         id,
         status as TranscodeStatusType
       );
-
-      cacheInvalidation.clearPattern("cache:api:movies:*");
 
       res.json({
         success: true,
@@ -65,8 +62,6 @@ class TranscodeController {
           status as TranscodeStatusType
         );
 
-      cacheInvalidation.clearPattern("cache:api:episodes:*");
-
       res.json({
         success: true,
         message: "Episode transcode status updated successfully",
@@ -100,10 +95,6 @@ class TranscodeController {
         seriesId,
         status as TranscodeStatusType
       );
-
-      // Clear cache for series and episodes
-      cacheInvalidation.clearPattern("cache:api:series:*");
-      cacheInvalidation.clearPattern("cache:api:episodes:*");
 
       res.json({
         success: true,
