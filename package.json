@@ -14,7 +14,7 @@
   "type": "commonjs",
   "dependencies": {
     "@clerk/express": "^1.7.1",
-    "@dev-sam17/prisma-client-for-samflix": "^0.1.7",
+    "@dev-sam17/prisma-client-for-samflix": "^0.1.8",
     "@types/express": "^5.0.2",
     "@types/ioredis": "^5.0.0",
     "@types/node": "^22.15.23",
