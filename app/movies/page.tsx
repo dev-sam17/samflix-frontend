@@ -226,8 +226,8 @@ export default function MoviesPage() {
     [params, searchQuery, selectedGenre]
   );
 
-  const { data: genres } = useApiWithContext(
-    (baseUrl) => () => api.client.movies.getGenres(baseUrl),
+  const { data: genres } = useApi(
+    () => api.server.movies.getAllGenres(),
     []
   );
 

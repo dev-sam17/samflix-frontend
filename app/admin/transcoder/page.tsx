@@ -22,18 +22,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { 
-  Search, 
-  RefreshCw, 
-  Film, 
-  Tv, 
-  PlayCircle, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Search,
+  RefreshCw,
+  Film,
+  Tv,
+  PlayCircle,
+  Clock,
+  CheckCircle,
+  XCircle,
   AlertTriangle,
   Activity,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { TranscodeStatus, Movie, TvSeries, Episode } from "@/lib/types";
@@ -143,24 +143,29 @@ function MovieTable() {
     try {
       setUpdatingMovies((prev) => ({ ...prev, [movieId]: true }));
       const result = await updateStatus({ id: movieId, status });
-      
+
       // Update the local state immediately
       setMovies((prevMovies) =>
         prevMovies.map((movie) =>
           movie.id === movieId
-            ? { ...movie, transcodeStatus: result.data.transcodeStatus as TranscodeStatus }
+            ? {
+                ...movie,
+                transcodeStatus: result.data.transcodeStatus as TranscodeStatus,
+              }
             : movie
         )
       );
-      
+
       // Clear the selected status for this movie
       setSelectedStatus((prev) => {
         const newState = { ...prev };
         delete newState[movieId];
         return newState;
       });
-      
-      toast.success(`Updated status for ${result.data.title} to ${result.data.transcodeStatus}`);
+
+      toast.success(
+        `Updated status for ${result.data.title} to ${result.data.transcodeStatus}`
+      );
     } catch (error) {
       toast.error("Failed to update status");
     } finally {
@@ -309,18 +314,18 @@ function MovieTable() {
   );
 }
 
-// Episode table component
-function EpisodeTable() {
+// Series table component
+function SeriesTable() {
   const baseUrl = useApiUrl();
   const [searchQuery, setSearchQuery] = useState("");
-  const [allEpisodes, setAllEpisodes] = useState<Array<EpisodeWithSeries>>([]);
+  const [series, setSeries] = useState<Array<TvSeries>>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<
     Record<string, TranscodeStatus>
   >({});
-  const [updatingEpisodes, setUpdatingEpisodes] = useState<
-    Record<string, boolean>
-  >({});
+  const [updatingSeries, setUpdatingSeries] = useState<Record<string, boolean>>(
+    {}
+  );
   const [statusFilter, setStatusFilter] = useState<TranscodeStatus | "ALL">(
     "ALL"
   );
@@ -341,144 +346,79 @@ function EpisodeTable() {
       })
   );
 
-  // Define episode type
-  type EpisodeWithSeries = {
-    id: string;
-    title: string;
-    seriesTitle: string;
-    seasonNumber: number;
-    episodeNumber: number;
-    transcodeStatus: TranscodeStatus;
-  };
-
-  // Update transcode status mutation
+  // Update transcode status mutation for series
   const { mutate: updateStatus } = useMutationWithContext(
     (baseUrl: string) => (params: { id: string; status: string }) =>
-      api.client.transcode.updateEpisodeStatus(
-        baseUrl,
-        params.id,
-        params.status
-      )
+      api.client.transcode.updateSeriesStatus(baseUrl, params.id, params.status)
   );
 
-  // Fetch episodes for each series
   useEffect(() => {
-    const fetchEpisodes = async () => {
-      if (seriesData?.data) {
-        const allEpisodesPromises = seriesData.data.map(
-          async (series: TvSeries) => {
-            try {
-              // Get all seasons (assuming season numbers start from 1)
-              const maxSeasons = 10; // Limit to avoid too many requests
-              let allSeriesEpisodes: any[] = [];
-
-              for (let season = 1; season <= maxSeasons; season++) {
-                try {
-                  const episodes = await api.client.series.getEpisodesBySeason(
-                    series.id,
-                    season,
-                    baseUrl ? baseUrl.toString() : ""
-                  );
-
-                  if (episodes && episodes.length > 0) {
-                    const mappedEpisodes = episodes.map(
-                      (episode) =>
-                        ({
-                          id: episode.id,
-                          title: episode.title,
-                          seriesTitle: series.title,
-                          seasonNumber: episode.seasonNumber,
-                          episodeNumber: episode.episodeNumber,
-                          transcodeStatus: episode.transcodeStatus,
-                        } as EpisodeWithSeries)
-                    );
-
-                    allSeriesEpisodes = [
-                      ...allSeriesEpisodes,
-                      ...mappedEpisodes,
-                    ];
-                  }
-                } catch (error) {
-                  // Season might not exist, continue to the next one
-                  continue;
-                }
-              }
-
-              return allSeriesEpisodes;
-            } catch (error) {
-              console.error(
-                `Error fetching episodes for series ${series.title}:`,
-                error
-              );
-              return [];
-            }
-          }
-        );
-
-        const episodesArrays = await Promise.all(allEpisodesPromises);
-        const flattenedEpisodes = episodesArrays.flat();
-        setAllEpisodes(flattenedEpisodes);
-        setLoading(false);
-      }
-    };
-
     if (seriesData) {
-      fetchEpisodes();
+      setSeries(seriesData.data);
+      setLoading(false);
     }
-  }, [seriesData, baseUrl]);
+  }, [seriesData]);
 
   const handleSearch = () => {
     setLoading(true);
     refetch();
   };
 
-  const handleStatusChange = (episodeId: string, status: TranscodeStatus) => {
-    setSelectedStatus((prev) => ({ ...prev, [episodeId]: status }));
+  const handleStatusChange = (seriesId: string, status: TranscodeStatus) => {
+    setSelectedStatus((prev) => ({ ...prev, [seriesId]: status }));
   };
 
-  const handleUpdateStatus = async (episodeId: string) => {
-    const status = selectedStatus[episodeId];
+  const handleUpdateStatus = async (seriesId: string) => {
+    const status = selectedStatus[seriesId];
     if (!status) {
       toast.error("Please select a status first");
       return;
     }
 
     try {
-      setUpdatingEpisodes((prev) => ({ ...prev, [episodeId]: true }));
-      const result = await updateStatus({ id: episodeId, status });
-      
+      setUpdatingSeries((prev) => ({ ...prev, [seriesId]: true }));
+      const result = await updateStatus({ id: seriesId, status });
+
       // Update the local state immediately
-      setAllEpisodes((prevEpisodes) =>
-        prevEpisodes.map((episode) =>
-          episode.id === episodeId
-            ? { ...episode, transcodeStatus: result.data.transcodeStatus as TranscodeStatus }
-            : episode
+      setSeries((prevSeries) =>
+        prevSeries.map((series) =>
+          series.id === seriesId
+            ? {
+                ...series,
+                transcodeStatus: status as TranscodeStatus,
+              }
+            : series
         )
       );
-      
-      // Clear the selected status for this episode
+
+      // Clear the selected status for this series
       setSelectedStatus((prev) => {
         const newState = { ...prev };
-        delete newState[episodeId];
+        delete newState[seriesId];
         return newState;
       });
-      
-      toast.success(`Updated status for ${result.data.title} to ${result.data.transcodeStatus}`);
+
+      // Get series title from local state for better message
+      const seriesTitle = series.find(s => s.id === seriesId)?.title || 'Series';
+      const episodeCount = result.data.updatedEpisodesCount || 0;
+
+      toast.success(
+        `Updated status for ${seriesTitle} to ${status}. Updated ${episodeCount} episodes.`
+      );
     } catch (error) {
       toast.error("Failed to update status");
     } finally {
-      setUpdatingEpisodes((prev) => ({ ...prev, [episodeId]: false }));
+      setUpdatingSeries((prev) => ({ ...prev, [seriesId]: false }));
     }
   };
 
-  // Filter episodes based on search query and status filter
-  const filteredEpisodes = allEpisodes.filter((episode: EpisodeWithSeries) => {
+  // Filter series based on search query and status filter
+  const filteredSeries = series.filter((seriesItem) => {
     const matchesSearch =
       !searchQuery ||
-      episode.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      episode.seriesTitle.toLowerCase().includes(searchQuery.toLowerCase());
+      seriesItem.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
-      statusFilter === "ALL" || episode.transcodeStatus === statusFilter;
+      statusFilter === "ALL" || seriesItem.transcodeStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -489,7 +429,7 @@ function EpisodeTable() {
           <div className="flex-1">
             <Input
               type="text"
-              placeholder="Search episodes..."
+              placeholder="Search series..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-gray-900 border-gray-700 text-white focus:ring-red-500 focus:border-red-500"
@@ -529,46 +469,44 @@ function EpisodeTable() {
       </div>
 
       {loading ? (
-        <div className="text-center py-8">Loading episodes...</div>
+        <div className="text-center py-8">Loading series...</div>
       ) : (
         <Table className="border border-gray-700 rounded-md overflow-hidden">
           <TableHeader className="bg-gray-800">
             <TableRow className="hover:bg-gray-800/80 border-b border-gray-700">
-              <TableHead className="text-white">Series</TableHead>
-              <TableHead className="text-white">Episode</TableHead>
+              <TableHead className="text-white">Series Title</TableHead>
               <TableHead className="text-white">Current Status</TableHead>
               <TableHead className="text-white">New Status</TableHead>
               <TableHead className="text-white">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredEpisodes.length === 0 ? (
+            {filteredSeries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  No episodes found
+                <TableCell colSpan={4} className="text-center">
+                  No series found
                 </TableCell>
               </TableRow>
             ) : (
-              filteredEpisodes.map((episode) => (
+              filteredSeries.map((seriesItem) => (
                 <TableRow
-                  key={episode.id}
+                  key={seriesItem.id}
                   className="hover:bg-gray-800/50 border-b border-gray-700"
                 >
                   <TableCell className="font-medium">
-                    {episode.seriesTitle}
+                    {seriesItem.title}
                   </TableCell>
                   <TableCell>
-                    <span className="text-gray-300">{`S${episode.seasonNumber}E${episode.episodeNumber}: `}</span>
-                    <span>{episode.title}</span>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={episode.transcodeStatus} />
+                    <StatusBadge status={seriesItem.transcodeStatus} />
                   </TableCell>
                   <TableCell>
                     <Select
-                      value={selectedStatus[episode.id] || ""}
+                      value={selectedStatus[seriesItem.id] || ""}
                       onValueChange={(value) =>
-                        handleStatusChange(episode.id, value as TranscodeStatus)
+                        handleStatusChange(
+                          seriesItem.id,
+                          value as TranscodeStatus
+                        )
                       }
                     >
                       <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700">
@@ -592,12 +530,12 @@ function EpisodeTable() {
                   </TableCell>
                   <TableCell>
                     <Button
-                      onClick={() => handleUpdateStatus(episode.id)}
+                      onClick={() => handleUpdateStatus(seriesItem.id)}
                       size="sm"
                       className="bg-red-600 hover:bg-red-700"
-                      disabled={updatingEpisodes[episode.id]}
+                      disabled={updatingSeries[seriesItem.id]}
                     >
-                      {updatingEpisodes[episode.id] ? (
+                      {updatingSeries[seriesItem.id] ? (
                         <>
                           <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                           Updating...
@@ -632,7 +570,7 @@ export default function TranscoderPage() {
     completedItems: 0,
     pendingItems: 0,
     failedItems: 0,
-    inProgressItems: 0
+    inProgressItems: 0,
   };
 
   return (
@@ -645,7 +583,9 @@ export default function TranscoderPage() {
               <PlayCircle className="w-8 h-8 text-red-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">Transcoder Manager</h1>
+              <h1 className="text-3xl font-bold text-white">
+                Transcoder Manager
+              </h1>
               <p className="text-gray-400">
                 Manage video transcoding status for movies and TV episodes
               </p>
@@ -716,11 +656,11 @@ export default function TranscoderPage() {
               Movies
             </TabsTrigger>
             <TabsTrigger
-              value="episodes"
+              value="series"
               className="data-[state=active]:bg-red-600 flex items-center gap-2"
             >
               <Tv className="w-4 h-4" />
-              TV Episodes
+              TV Series
             </TabsTrigger>
           </TabsList>
 
@@ -738,16 +678,16 @@ export default function TranscoderPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="episodes" className="mt-6">
+          <TabsContent value="series" className="mt-6">
             <Card className="bg-gray-900/50 border-gray-800">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
                   <Tv className="w-5 h-5 text-red-400" />
-                  Episode Transcoding Status
+                  Series Transcoding Status
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <EpisodeTable />
+                <SeriesTable />
               </CardContent>
             </Card>
           </TabsContent>

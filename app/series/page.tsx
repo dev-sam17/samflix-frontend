@@ -18,6 +18,7 @@ import Image from "next/image";
 
 import { api } from "@/lib/api";
 import type { TvSeries } from "@/lib/types";
+import { TranscodeStatus } from "@/lib/types";
 import { useApi } from "@/hooks/use-api";
 import { useApiWithContext } from "@/hooks/use-api-with-context";
 
@@ -217,8 +218,8 @@ export default function SeriesPage() {
   );
 
   // Fetch genres
-  const { data: genres } = useApiWithContext(
-    (baseUrl) => () => api.client.series.getGenres(baseUrl),
+  const { data: genres } = useApi(
+    () => api.server.series.getAllGenres(),
     []
   );
 
@@ -258,6 +259,11 @@ export default function SeriesPage() {
       setParams((prev) => ({ ...prev, page: prev.page + 1 }));
     }
   };
+
+  // Filter series to only show completed ones
+  const filteredSeries = seriesData?.data?.filter(
+    (series) => series.transcodeStatus === TranscodeStatus.COMPLETED
+  ) || [];
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -373,7 +379,7 @@ export default function SeriesPage() {
         {/* Series Grid/List */}
         {seriesLoading ? (
           <LoadingGrid viewMode={viewMode} />
-        ) : seriesData?.data.length ? (
+        ) : filteredSeries.length ? (
           <>
             <div
               className={
@@ -382,7 +388,7 @@ export default function SeriesPage() {
                   : "space-y-4"
               }
             >
-              {seriesData.data.map((series) => (
+              {filteredSeries.map((series) => (
                 <SeriesCard
                   key={series.id}
                   series={series}
@@ -392,7 +398,7 @@ export default function SeriesPage() {
             </div>
 
             {/* Load More Button */}
-            {seriesData.meta &&
+            {seriesData?.meta &&
               seriesData.meta.page < seriesData.meta.totalPages && (
                 <div className="mt-8 text-center">
                   <Button

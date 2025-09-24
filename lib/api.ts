@@ -92,6 +92,26 @@ export const serverApi = {
         API_BASE_URL
       );
     },
+
+    // Get all movie genres
+    getAllGenres: (): Promise<string[]> => {
+      return apiRequest<string[]>(
+        `/api/movies/genres/all`,
+        {},
+        "force-cache",
+        API_BASE_URL
+      );
+    },
+
+    // Get movies by genre
+    getByGenre: (genre: string): Promise<Movie[]> => {
+      return apiRequest<Movie[]>(
+        `/api/movies/genre/${encodeURIComponent(genre)}`,
+        {},
+        "force-cache",
+        API_BASE_URL
+      );
+    },
   },
 
   series: {
@@ -124,6 +144,26 @@ export const serverApi = {
     getById: (id: string): Promise<TvSeries> => {
       return apiRequest<TvSeries>(
         `/api/series/${id}`,
+        {},
+        "force-cache",
+        API_BASE_URL
+      );
+    },
+
+    // Get all series genres
+    getAllGenres: (): Promise<string[]> => {
+      return apiRequest<string[]>(
+        `/api/series/genres/all`,
+        {},
+        "force-cache",
+        API_BASE_URL
+      );
+    },
+
+    // Get series by genre
+    getByGenre: (genre: string): Promise<TvSeries[]> => {
+      return apiRequest<TvSeries[]>(
+        `/api/series/genre/${encodeURIComponent(genre)}`,
         {},
         "force-cache",
         API_BASE_URL
@@ -502,6 +542,61 @@ export const clientApi = {
         {
           method: "PUT",
           body: JSON.stringify({ status }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+        "no-store",
+        baseUrl
+      );
+    },
+
+    // Update Series Transcode Status (all episodes in series)
+    updateSeriesStatus: async (
+      baseUrl: string,
+      id: string,
+      status: string
+    ): Promise<{
+      success: boolean;
+      message: string;
+      data: {
+        seriesId: string;
+        updatedEpisodesCount: number;
+        episodes: Array<{
+          id: string;
+          title: string;
+          transcodeStatus: string;
+          series: {
+            id: string;
+            title: string;
+          };
+        }>;
+      };
+    }> => {
+      return apiRequest<{
+        success: boolean;
+        message: string;
+        data: {
+          seriesId: string;
+          updatedEpisodesCount: number;
+          episodes: Array<{
+            id: string;
+            title: string;
+            transcodeStatus: string;
+            series: {
+              id: string;
+              title: string;
+            };
+          }>;
+        };
+      }>(
+        `/api/transcode/series/${id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ status }),
+          headers: {
+            "Content-Type": "application/json",
+          },
         },
         "no-store",
         baseUrl

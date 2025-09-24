@@ -16,6 +16,7 @@ import { useApiWithContext } from "@/hooks/use-api-with-context";
 import { useApiUrl } from "@/contexts/api-url-context";
 import { runtimeFormat } from "@/lib/utils";
 import { ContinueWatching } from "@/components/continue-watching";
+import { FeaturedCarousel } from "@/components/featured-carousel";
 import { useUser } from "@clerk/nextjs";
 
 function HeroSection({ featuredMovie }: { featuredMovie: Movie | null }) {
@@ -215,25 +216,34 @@ export default function HomePage() {
   const [isSearching, setIsSearching] = useState(false);
   const { apiBaseUrl } = useApiUrl();
 
-  // Fetch featured movies
-  const { data: moviesData, loading: moviesLoading, error: moviesError } = useApiWithContext(
+  // Fetch featured movies (latest 10)
+  const {
+    data: moviesData,
+    loading: moviesLoading,
+    error: moviesError,
+  } = useApiWithContext(
     (baseUrl) => () =>
       api.client.movies.getAll({
         baseUrl,
-        limit: 6,
-        sortBy: "rating",
+        limit: 10,
+        sortBy: "createdAt",
         sortOrder: "desc",
+        status: "COMPLETED",
       }),
     []
   );
 
-  // Fetch featured series
-  const { data: seriesData, loading: seriesLoading, error: seriesError } = useApiWithContext(
+  // Fetch featured series (latest 10)
+  const {
+    data: seriesData,
+    loading: seriesLoading,
+    error: seriesError,
+  } = useApiWithContext(
     (baseUrl) => () =>
       api.client.series.getAll({
         baseUrl,
-        limit: 6,
-        sortBy: "firstAirDate",
+        limit: 10,
+        sortBy: "createdAt",
         sortOrder: "desc",
       }),
     []
@@ -258,8 +268,12 @@ export default function HomePage() {
         api.client.movies.getAll({ baseUrl: apiBaseUrl!, search: query }),
         api.client.series.getAll({ baseUrl: apiBaseUrl!, search: query }),
       ]);
-      const movieData = Array.isArray(movieResults.data) ? movieResults.data : [];
-      const seriesData = Array.isArray(seriesResults.data) ? seriesResults.data : [];
+      const movieData = Array.isArray(movieResults.data)
+        ? movieResults.data
+        : [];
+      const seriesData = Array.isArray(seriesResults.data)
+        ? seriesResults.data
+        : [];
       setSearchResults([...movieData, ...seriesData]);
     } catch (error) {
       console.error("Search error:", error);
@@ -269,15 +283,16 @@ export default function HomePage() {
     }
   };
 
-  const movies = Array.isArray(moviesData?.data)
-    ? moviesData.data.filter(
-        (movie) => movie.transcodeStatus === TranscodeStatus.COMPLETED
+  const movies = Array.isArray(moviesData?.data) ? moviesData.data : [];
+  const series = Array.isArray(seriesData?.data)
+    ? seriesData.data.filter(
+        (series) => series.transcodeStatus === TranscodeStatus.COMPLETED
       )
     : [];
 
   const featuredMovie = movies[0] || null;
   const featuredMovies = movies || [];
-  const featuredSeries = Array.isArray(seriesData?.data) ? seriesData.data : [];
+  const featuredSeries = series || [];
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -305,65 +320,29 @@ export default function HomePage() {
             </div>
           </section>
         )}
-        
+
         {/* Continue Watching (only for authenticated users) */}
         <ContinueWatching />
 
-        {/* Featured Movies */}
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Featured Movies</h2>
-            <Link href="/movies">
-              <Button
-                variant="outline"
-                className="border-gray-600 text-gray-300 hover:bg-white/10"
-              >
-                View All
-              </Button>
-            </Link>
-          </div>
-          {moviesError ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400">Failed to load featured movies</p>
-            </div>
-          ) : moviesLoading ? (
-            <LoadingGrid />
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-              {featuredMovies.map((movie) => (
-                <MediaCard key={movie.id} item={movie} type="movie" />
-              ))}
-            </div>
-          )}
-        </section>
+        {/* Featured Movies Carousel */}
+        <FeaturedCarousel
+          items={featuredMovies}
+          title="Latest Movies"
+          type="movies"
+          viewAllLink="/movies"
+          loading={moviesLoading}
+          error={moviesError?.message || null}
+        />
 
-        {/* Featured Series */}
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Featured TV Series</h2>
-            <Link href="/series">
-              <Button
-                variant="outline"
-                className="border-gray-600 text-gray-300 hover:bg-white/10"
-              >
-                View All
-              </Button>
-            </Link>
-          </div>
-          {seriesError ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400">Failed to load featured series</p>
-            </div>
-          ) : seriesLoading ? (
-            <LoadingGrid />
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-              {featuredSeries.map((series) => (
-                <MediaCard key={series.id} item={series} type="series" />
-              ))}
-            </div>
-          )}
-        </section>
+        {/* Featured Series Carousel */}
+        <FeaturedCarousel
+          items={featuredSeries}
+          title="Latest TV Series"
+          type="series"
+          viewAllLink="/series"
+          loading={seriesLoading}
+          error={seriesError?.message || null}
+        />
 
         {/* Quick Stats */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-6">

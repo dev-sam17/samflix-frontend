@@ -14,6 +14,13 @@ export interface PaginatedResponse<T> {
   };
 }
 
+// Enums matching Prisma schema
+export enum Role {
+  ADMIN = "ADMIN",
+  TESTER = "TESTER",
+  USER = "USER",
+}
+
 export enum TranscodeStatus {
   PENDING = "PENDING",
   IN_PROGRESS = "IN_PROGRESS",
@@ -21,7 +28,8 @@ export enum TranscodeStatus {
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",
 }
-// Types based on your Prisma schema
+
+// Types based on Prisma schema
 export interface Movie {
   id: string;
   tmdbId: number;
@@ -39,9 +47,10 @@ export interface Movie {
   backdropPath?: string;
   genres: string[];
   runtime?: number;
-  rating?: number;
-  playPath: string;
+  rating?: number; // Maps to Prisma's rating field
+  releaseDate: string; // Maps to Prisma's releaseDate DateTime
   transcodeStatus: TranscodeStatus;
+  playPath: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,15 +67,9 @@ export interface TvSeries {
   lastAirDate?: string;
   status?: string;
   episodes: Episode[];
-  seasons: Season[];
+  transcodeStatus: TranscodeStatus;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface Season {
-  id: string;
-  seasonNumber: number;
-  episodes: Episode[];
 }
 
 export interface Episode {
@@ -85,8 +88,8 @@ export interface Episode {
   provider?: string;
   airDate?: string;
   seriesId: string;
-  playPath: string;
   transcodeStatus: TranscodeStatus;
+  playPath: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,7 +97,7 @@ export interface Episode {
 export interface MediaFolder {
   id: string;
   path: string;
-  type: "movies" | "series";
+  type: string; // "movies" or "series" - matches Prisma String type
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -104,10 +107,30 @@ export interface ScanningConflict {
   id: string;
   fileName: string;
   filePath: string;
-  mediaType: "movie" | "series";
-  possibleMatches: any[];
+  mediaType: string; // "movie" or "series" - matches Prisma String type
+  possibleMatches: any; // Maps to Prisma's Json type
   resolved: boolean;
   selectedId?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface User {
+  id: string;
+  clerkId: string;
+  email: string;
+  name?: string;
+  imageUrl?: string;
+  role: Role;
+  createdAt: string;
+  updatedAt: string;
+  userStats?: UserStats;
+}
+
+export interface UserStats {
+  id: string;
+  userId: string;
+  totalPlayTime: number;
   createdAt: string;
   updatedAt: string;
 }
