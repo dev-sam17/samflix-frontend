@@ -22,6 +22,7 @@ import scannerRoutes from "./api/routes/scanner.routes";
 import webhookRoutes from "./api/routes/webhook.routes";
 import transcodeRoutes from "./api/routes/transcode.routes";
 import progressRoutes from "./api/routes/progress.routes";
+import { MediaScanSchedulerService } from "./services/scheduler/media-scan-scheduler.service";
 
 // Create Express app
 const app = express();
@@ -130,8 +131,13 @@ app.listen(PORT, "0.0.0.0", () => {
 });
 
 // Initialize cron job for scanning
-const scanInterval = process.env.SCAN_INTERVAL || "0 * * * *";
-cron.schedule(scanInterval, () => {
-  // Scanner service will be implemented here
-  console.log("Running scheduled media scan...");
-});
+const scanInterval = process.env.SCAN_INTERVAL || "0 */2 * * *"; // Every 2 hours
+cron.schedule(
+  scanInterval,
+  async () => {
+    await MediaScanSchedulerService.executeScheduledScan();
+  },
+  {
+    timezone: process.env.TZ || "UTC",
+  }
+);
