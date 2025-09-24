@@ -82,6 +82,48 @@ class TranscodeController {
   };
 
   /**
+   * Update the transcode status of all episodes in a series
+   */
+  updateSeriesTranscodeStatus: AsyncRequestHandler = async (req, res) => {
+    try {
+      const { seriesId } = req.params;
+      const { status } = req.body;
+
+      if (!seriesId || !status) {
+        res.status(400).json({
+          error: "Missing required parameters: seriesId and status are required",
+        });
+        return;
+      }
+
+      const updatedEpisodes = await transcodeService.updateSeriesTranscodeStatus(
+        seriesId,
+        status as TranscodeStatusType
+      );
+
+      // Clear cache for series and episodes
+      cacheInvalidation.clearPattern("cache:api:series:*");
+      cacheInvalidation.clearPattern("cache:api:episodes:*");
+
+      res.json({
+        success: true,
+        message: "Series transcode status updated successfully",
+        data: {
+          seriesId,
+          updatedEpisodesCount: updatedEpisodes.length,
+          episodes: updatedEpisodes,
+        },
+      });
+    } catch (error) {
+      console.error("Error updating series transcode status:", error);
+      res.status(500).json({
+        error: "Failed to update series transcode status",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  };
+
+  /**
    * Get all items with a specific transcode status
    */
   getItemsByTranscodeStatus: AsyncRequestHandler = async (req, res) => {

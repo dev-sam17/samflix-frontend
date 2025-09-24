@@ -33,6 +33,16 @@ router.put(
 );
 
 /**
+ * @route PUT /api/transcode/series/:seriesId
+ * @description Update the transcode status of all episodes in a series
+ * @access Admin only
+ */
+router.put(
+  "/series/:seriesId",
+  transcodeController.updateSeriesTranscodeStatus as unknown as RequestHandler
+);
+
+/**
  * @route GET /api/transcode/status/:status
  * @description Get all items with a specific transcode status
  * @access Admin only

@@ -55,6 +55,62 @@ class TranscodeService {
   }
 
   /**
+   * Update the transcode status of all episodes in a series
+   * @param seriesId The series ID
+   * @param status The new transcode status
+   * @returns Array of updated episodes
+   */
+  async updateSeriesTranscodeStatus(
+    seriesId: string,
+    status: TranscodeStatusType
+  ) {
+    try {
+      // First, verify the series exists
+      const series = await prisma.tvSeries.findUnique({
+        where: { id: seriesId },
+        include: {
+          episodes: {
+            select: { id: true, title: true, transcodeStatus: true },
+          },
+        },
+      });
+
+      if (!series) {
+        throw new Error(`Series with ID ${seriesId} not found`);
+      }
+
+      if (series.episodes.length === 0) {
+        throw new Error(`No episodes found for series with ID ${seriesId}`);
+      }
+
+      // Update all episodes in the series
+      const updatedEpisodes = await prisma.episode.updateMany({
+        where: { seriesId },
+        data: { transcodeStatus: status },
+      });
+
+      // Return the updated episodes with full details
+      const episodes = await prisma.episode.findMany({
+        where: { seriesId },
+        include: {
+          series: {
+            select: { id: true, title: true },
+          },
+        },
+      });
+
+      console.log(
+        `Updated transcode status to ${status} for ${updatedEpisodes.count} episodes in series: ${series.title}`
+      );
+
+      return episodes;
+    } catch (error) {
+      console.error("Error updating series transcode status:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get all items with a specific transcode status
    * @param status The transcode status to filter by
    * @returns Object containing movies and episodes with the specified status
