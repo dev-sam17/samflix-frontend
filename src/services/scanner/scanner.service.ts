@@ -102,25 +102,45 @@ class ScannerService {
     year?: number
   ): Promise<boolean> {
     try {
-      // Check if there's a movie with the same file path or file name
-      const existingMovie = await prisma.movie.findFirst({
-        where: {
-          OR: [
-            { filePath },
-            { fileName },
-            {
-              AND: [
-                { title: { equals: title, mode: "insensitive" } },
-                year ? { year } : {},
-              ],
-            },
-          ],
-        },
+      // First check by file path (most reliable)
+      const existingByPath = await prisma.movie.findFirst({
+        where: { filePath },
+      });
+      
+      if (existingByPath) {
+        return true;
+      }
+
+      // Then check by file name
+      const existingByFileName = await prisma.movie.findFirst({
+        where: { fileName },
+      });
+      
+      if (existingByFileName) {
+        return true;
+      }
+
+      // Finally check by title and year (escape special characters)
+      const sanitizedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const titleQuery: any = {
+        title: { 
+          contains: sanitizedTitle, 
+          mode: "insensitive" 
+        }
+      };
+
+      if (year) {
+        titleQuery.year = year;
+      }
+
+      const existingByTitle = await prisma.movie.findFirst({
+        where: titleQuery,
       });
 
-      return !!existingMovie;
+      return !!existingByTitle;
     } catch (error) {
       console.error("Error checking if movie exists in database:", error);
+      console.error("Problematic values:", { fileName, filePath, title, year });
       return false;
     }
   }
@@ -133,26 +153,50 @@ class ScannerService {
     episodeNumber: number
   ): Promise<boolean> {
     try {
-      // Check if there's an episode with the same file path or file name
-      const existingEpisode = await prisma.episode.findFirst({
+      // First check by file path (most reliable)
+      const existingByPath = await prisma.episode.findFirst({
+        where: { filePath },
+      });
+      
+      if (existingByPath) {
+        return true;
+      }
+
+      // Then check by file name
+      const existingByFileName = await prisma.episode.findFirst({
+        where: { fileName },
+      });
+      
+      if (existingByFileName) {
+        return true;
+      }
+
+      // Finally check by series name, season, and episode number
+      const sanitizedSeriesName = seriesName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const existingByDetails = await prisma.episode.findFirst({
         where: {
-          OR: [
-            { filePath },
-            { fileName },
-            {
-              AND: [
-                { title: { equals: seriesName, mode: "insensitive" } },
-                { seasonNumber },
-                { episodeNumber },
-              ],
+          AND: [
+            { 
+              series: {
+                title: { 
+                  contains: sanitizedSeriesName, 
+                  mode: "insensitive" 
+                }
+              }
             },
+            { seasonNumber },
+            { episodeNumber },
           ],
         },
+        include: {
+          series: true
+        }
       });
 
-      return !!existingEpisode;
+      return !!existingByDetails;
     } catch (error) {
       console.error("Error checking if episode exists in database:", error);
+      console.error("Problematic values:", { fileName, filePath, seriesName, seasonNumber, episodeNumber });
       return false;
     }
   }
