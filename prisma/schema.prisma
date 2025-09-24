@@ -50,6 +50,7 @@ model TvSeries {
   episodes     Episode[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  transcodeStatus TranscodeStatus @default(PENDING)
 }
 
 model Episode {
