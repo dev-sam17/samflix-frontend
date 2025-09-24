@@ -18,6 +18,7 @@ import {
 import { IconLogin } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Bebas_Neue } from "next/font/google";
+import { useAuthContext } from "@/contexts/auth-context";
 
 const bebasNeue = Bebas_Neue({
   weight: "400",
@@ -28,12 +29,17 @@ const bebasNeue = Bebas_Neue({
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const { isAdmin } = useAuthContext();
 
   const navItems = [
     { href: "/", label: "Home", icon: Home },
     { href: "/movies", label: "Movies", icon: Film },
     { href: "/series", label: "TV Series", icon: Tv },
     { href: "/genres", label: "Genres", icon: Grid3X3 },
+  ];
+
+  const adminItems = [
+    { href: "/admin", label: "Admin", icon: Settings },
   ];
 
   const isActive = (href: string) => {
@@ -93,6 +99,23 @@ export function Navbar() {
               </SignInButton>
             </SignedOut>
             <SignedIn>
+              {isAdmin && adminItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-2 transition-colors ${
+                      isActive(item.href)
+                        ? "text-red-600"
+                        : "hover:text-red-600"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
               <UserButton />
             </SignedIn>
           </div>
@@ -145,7 +168,7 @@ export function Navbar() {
                 );
               })}
               <SignedIn>
-                {navItems.map((item) => {
+                {isAdmin && adminItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <Link

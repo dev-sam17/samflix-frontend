@@ -5,12 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -26,8 +21,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Search, RefreshCw, Film, Tv } from "lucide-react";
+import { toast } from "sonner";
+import { 
+  Search, 
+  RefreshCw, 
+  Film, 
+  Tv, 
+  PlayCircle, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  AlertTriangle,
+  Activity,
+  Loader2
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { TranscodeStatus, Movie, TvSeries, Episode } from "@/lib/types";
 import {
@@ -35,7 +42,6 @@ import {
   useMutationWithContext,
 } from "@/hooks/use-api-with-context";
 import { useApiUrl } from "@/contexts/api-url-context";
-import { ApiUrlContextType } from "@/contexts/api-url-context";
 
 // Helper component for status badge
 function StatusBadge({ status }: { status: TranscodeStatus }) {
@@ -75,7 +81,6 @@ function StatusBadge({ status }: { status: TranscodeStatus }) {
 
 // Movie table component
 function MovieTable() {
-  const { toast } = useToast();
   const baseUrl = useApiUrl();
   const [searchQuery, setSearchQuery] = useState("");
   const [movies, setMovies] = useState<Array<Movie>>([]);
@@ -131,28 +136,33 @@ function MovieTable() {
   const handleUpdateStatus = async (movieId: string) => {
     const status = selectedStatus[movieId];
     if (!status) {
-      toast({
-        title: "Error",
-        description: "Please select a status first",
-        variant: "destructive",
-      });
+      toast.error("Please select a status first");
       return;
     }
 
     try {
       setUpdatingMovies((prev) => ({ ...prev, [movieId]: true }));
       const result = await updateStatus({ id: movieId, status });
-      toast({
-        title: "Success",
-        description: `Updated status for ${result.data.title} to ${result.data.transcodeStatus}`,
+      
+      // Update the local state immediately
+      setMovies((prevMovies) =>
+        prevMovies.map((movie) =>
+          movie.id === movieId
+            ? { ...movie, transcodeStatus: result.data.transcodeStatus as TranscodeStatus }
+            : movie
+        )
+      );
+      
+      // Clear the selected status for this movie
+      setSelectedStatus((prev) => {
+        const newState = { ...prev };
+        delete newState[movieId];
+        return newState;
       });
-      refetch();
+      
+      toast.success(`Updated status for ${result.data.title} to ${result.data.transcodeStatus}`);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update status",
-        variant: "destructive",
-      });
+      toast.error("Failed to update status");
     } finally {
       setUpdatingMovies((prev) => ({ ...prev, [movieId]: false }));
     }
@@ -301,7 +311,6 @@ function MovieTable() {
 
 // Episode table component
 function EpisodeTable() {
-  const { toast } = useToast();
   const baseUrl = useApiUrl();
   const [searchQuery, setSearchQuery] = useState("");
   const [allEpisodes, setAllEpisodes] = useState<Array<EpisodeWithSeries>>([]);
@@ -430,28 +439,33 @@ function EpisodeTable() {
   const handleUpdateStatus = async (episodeId: string) => {
     const status = selectedStatus[episodeId];
     if (!status) {
-      toast({
-        title: "Error",
-        description: "Please select a status first",
-        variant: "destructive",
-      });
+      toast.error("Please select a status first");
       return;
     }
 
     try {
       setUpdatingEpisodes((prev) => ({ ...prev, [episodeId]: true }));
       const result = await updateStatus({ id: episodeId, status });
-      toast({
-        title: "Success",
-        description: `Updated status for ${result.data.title} to ${result.data.transcodeStatus}`,
+      
+      // Update the local state immediately
+      setAllEpisodes((prevEpisodes) =>
+        prevEpisodes.map((episode) =>
+          episode.id === episodeId
+            ? { ...episode, transcodeStatus: result.data.transcodeStatus as TranscodeStatus }
+            : episode
+        )
+      );
+      
+      // Clear the selected status for this episode
+      setSelectedStatus((prev) => {
+        const newState = { ...prev };
+        delete newState[episodeId];
+        return newState;
       });
-      refetch();
+      
+      toast.success(`Updated status for ${result.data.title} to ${result.data.transcodeStatus}`);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update status",
-        variant: "destructive",
-      });
+      toast.error("Failed to update status");
     } finally {
       setUpdatingEpisodes((prev) => ({ ...prev, [episodeId]: false }));
     }
@@ -605,48 +619,140 @@ function EpisodeTable() {
 
 // Main Transcoder Page Component
 export default function TranscoderPage() {
+  // Get health data for system status
+  const { data: healthData } = useApiWithContext(
+    (baseUrl) => () => api.client.system.healthCheck(baseUrl),
+    []
+  );
+
+  // Mock statistics - in a real app, you'd fetch these from your API
+  const stats = {
+    totalMovies: 0, // You can implement API calls to get actual counts
+    totalEpisodes: 0,
+    completedItems: 0,
+    pendingItems: 0,
+    failedItems: 0,
+    inProgressItems: 0
+  };
+
   return (
-    <div className="p-6 md:p-8 bg-gradient-to-b from-gray-900 to-black min-h-screen">
-      <h1 className="text-3xl font-bold mb-6 text-white">
-        Transcode Management
-      </h1>
-      <Accordion
-        type="single"
-        collapsible
-        className="mb-6 bg-gray-800/50 rounded-lg border border-gray-700"
-      >
-        <AccordionItem value="movies">
-          <AccordionTrigger className="text-xl font-semibold text-white px-4 py-2 hover:bg-gray-700/50">
-            <div className="flex items-center gap-2">
-              <Film className="h-5 w-5 text-red-500" />
-              Movies
+    <div className="min-h-screen bg-black text-white">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-red-600/20 rounded-lg">
+              <PlayCircle className="w-8 h-8 text-red-400" />
             </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <Card>
-              <CardContent className="pt-6">
+            <div>
+              <h1 className="text-3xl font-bold text-white">Transcoder Manager</h1>
+              <p className="text-gray-400">
+                Manage video transcoding status for movies and TV episodes
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-8 flex gap-4">
+          <Button
+            size="lg"
+            className="bg-red-600 hover:bg-red-700"
+            onClick={() => window.location.reload()}
+          >
+            <RefreshCw className="w-5 h-5 mr-2" />
+            Refresh Data
+          </Button>
+        </div>
+
+        {/* Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-gradient-to-br from-green-600/20 to-green-800/20 border-green-500/30">
+            <CardContent className="p-6 text-center">
+              <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-white">
+                {stats.completedItems}
+              </div>
+              <div className="text-sm text-gray-400">Completed</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 border-yellow-500/30">
+            <CardContent className="p-6 text-center">
+              <Clock className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-white">
+                {stats.pendingItems}
+              </div>
+              <div className="text-sm text-gray-400">Pending</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 border-blue-500/30">
+            <CardContent className="p-6 text-center">
+              <Loader2 className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-white">
+                {stats.inProgressItems}
+              </div>
+              <div className="text-sm text-gray-400">In Progress</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-red-600/20 to-red-800/20 border-red-500/30">
+            <CardContent className="p-6 text-center">
+              <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-white">
+                {stats.failedItems}
+              </div>
+              <div className="text-sm text-gray-400">Failed</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="movies" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 bg-gray-900/50 border border-gray-800">
+            <TabsTrigger
+              value="movies"
+              className="data-[state=active]:bg-red-600 flex items-center gap-2"
+            >
+              <Film className="w-4 h-4" />
+              Movies
+            </TabsTrigger>
+            <TabsTrigger
+              value="episodes"
+              className="data-[state=active]:bg-red-600 flex items-center gap-2"
+            >
+              <Tv className="w-4 h-4" />
+              TV Episodes
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="movies" className="mt-6">
+            <Card className="bg-gray-900/50 border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Film className="w-5 h-5 text-red-400" />
+                  Movie Transcoding Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <MovieTable />
               </CardContent>
             </Card>
-          </AccordionContent>
-        </AccordionItem>
+          </TabsContent>
 
-        <AccordionItem value="episodes">
-          <AccordionTrigger className="text-xl font-semibold text-white px-4 py-2 hover:bg-gray-700/50">
-            <div className="flex items-center gap-2">
-              <Tv className="h-5 w-5 text-red-500" />
-              TV Series Episodes
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <Card>
-              <CardContent className="pt-6">
+          <TabsContent value="episodes" className="mt-6">
+            <Card className="bg-gray-900/50 border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Tv className="w-5 h-5 text-red-400" />
+                  Episode Transcoding Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <EpisodeTable />
               </CardContent>
             </Card>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

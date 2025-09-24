@@ -8,6 +8,7 @@ type AuthContextType = {
   isLoading: boolean;
   userId: string | null | undefined;
   user: any | null;
+  isAdmin: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,13 +25,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isClerkLoaded, isUserLoaded]);
 
+  // Check if user has admin role in public metadata
+  const isAdmin = user?.publicMetadata?.role === "admin";
+
   const value = {
     isAuthenticated: !!userId,
     isLoading,
     userId: userId || null,
     user,
+    isAdmin,
   };
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

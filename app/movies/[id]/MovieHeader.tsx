@@ -258,7 +258,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
           </VisuallyHidden>
           <HLSPlayer
             src={new URL(
-              process.env.NEXT_PUBLIC_API_URL + movie.playPath
+              process.env.NEXT_PUBLIC_API_URL_LOCAL + movie.playPath
             ).toString()}
             title={movie.title}
             poster={
