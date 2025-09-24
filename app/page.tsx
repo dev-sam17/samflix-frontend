@@ -216,7 +216,7 @@ export default function HomePage() {
   const { apiBaseUrl } = useApiUrl();
 
   // Fetch featured movies
-  const { data: moviesData, loading: moviesLoading } = useApiWithContext(
+  const { data: moviesData, loading: moviesLoading, error: moviesError } = useApiWithContext(
     (baseUrl) => () =>
       api.client.movies.getAll({
         baseUrl,
@@ -228,7 +228,7 @@ export default function HomePage() {
   );
 
   // Fetch featured series
-  const { data: seriesData, loading: seriesLoading } = useApiWithContext(
+  const { data: seriesData, loading: seriesLoading, error: seriesError } = useApiWithContext(
     (baseUrl) => () =>
       api.client.series.getAll({
         baseUrl,
@@ -258,7 +258,9 @@ export default function HomePage() {
         api.client.movies.getAll({ baseUrl: apiBaseUrl!, search: query }),
         api.client.series.getAll({ baseUrl: apiBaseUrl!, search: query }),
       ]);
-      setSearchResults([...movieResults.data, ...seriesResults.data]);
+      const movieData = Array.isArray(movieResults.data) ? movieResults.data : [];
+      const seriesData = Array.isArray(seriesResults.data) ? seriesResults.data : [];
+      setSearchResults([...movieData, ...seriesData]);
     } catch (error) {
       console.error("Search error:", error);
       setSearchResults([]);
@@ -267,14 +269,15 @@ export default function HomePage() {
     }
   };
 
-  const movies =
-    moviesData?.data.filter(
-      (movie) => movie.transcodeStatus === TranscodeStatus.COMPLETED
-    ) || [];
+  const movies = Array.isArray(moviesData?.data)
+    ? moviesData.data.filter(
+        (movie) => movie.transcodeStatus === TranscodeStatus.COMPLETED
+      )
+    : [];
 
   const featuredMovie = movies[0] || null;
   const featuredMovies = movies || [];
-  const featuredSeries = seriesData?.data || [];
+  const featuredSeries = Array.isArray(seriesData?.data) ? seriesData.data : [];
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -319,7 +322,11 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
-          {moviesLoading ? (
+          {moviesError ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400">Failed to load featured movies</p>
+            </div>
+          ) : moviesLoading ? (
             <LoadingGrid />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
@@ -343,7 +350,11 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
-          {seriesLoading ? (
+          {seriesError ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400">Failed to load featured series</p>
+            </div>
+          ) : seriesLoading ? (
             <LoadingGrid />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">

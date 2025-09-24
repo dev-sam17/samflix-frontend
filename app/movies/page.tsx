@@ -95,7 +95,7 @@ function MovieCard({
                 </div>
               </div>
               <div className="flex gap-2 mb-3">
-                {movie.genres.map((genre: string) => (
+                {Array.isArray(movie.genres) && movie.genres.map((genre: string) => (
                   <Badge
                     key={genre}
                     variant="outline"
@@ -157,7 +157,7 @@ function MovieCard({
             )}
           </div>
           <div className="flex gap-1 flex-wrap">
-            {movie.genres.slice(0, 2).map((genre: string) => (
+            {Array.isArray(movie.genres) && movie.genres.slice(0, 2).map((genre: string) => (
               <Badge
                 key={genre}
                 variant="outline"
@@ -277,7 +277,7 @@ export default function MoviesPage() {
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-700">
                 <SelectItem value="all">All Genres</SelectItem>
-                {genres?.map((genre) => (
+                {Array.isArray(genres) && genres.map((genre) => (
                   <SelectItem key={genre} value={genre}>
                     {genre}
                   </SelectItem>
@@ -345,10 +345,30 @@ export default function MoviesPage() {
           </p>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-12">
+            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 max-w-md mx-auto">
+              <h3 className="text-lg font-semibold text-red-400 mb-2">
+                Failed to load movies
+              </h3>
+              <p className="text-gray-400 mb-4">
+                {error.message || "An unexpected error occurred"}
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Try Again
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Movies Grid/List */}
-        {moviesLoading ? (
+        {!error && moviesLoading ? (
           <LoadingGrid viewMode={viewMode} />
-        ) : moviesData?.data.length ? (
+        ) : !error && moviesData?.data.length ? (
           <>
             <div
               className={
@@ -376,13 +396,13 @@ export default function MoviesPage() {
                 </div>
               )}
           </>
-        ) : (
+        ) : !error ? (
           <div className="text-center py-12">
             <p className="text-gray-400 text-lg">
               No movies found matching your criteria.
             </p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

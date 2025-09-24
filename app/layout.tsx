@@ -7,6 +7,8 @@ import { PWAInstallPrompt } from "@/components/ui/pwa-install-prompt";
 import { ServiceWorkerRegistration } from "@/components/ui/service-worker-registration";
 import { ApiUrlProviderWrapper } from "@/components/providers/api-url-provider-wrapper";
 import { AuthProviderWrapper } from "@/components/providers/auth-provider-wrapper";
+import ErrorBoundary from "@/components/error-boundary";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -93,12 +95,27 @@ export default function RootLayout({
           <meta name="msapplication-TileColor" content="#000000" />
         </head>
         <body className={`${inter.className} bg-black text-white`}>
-          <ApiUrlProviderWrapper>
-            <ServiceWorkerRegistration />
-            <Navbar />
-            {children}
-            <PWAInstallPrompt />
-          </ApiUrlProviderWrapper>
+          <ErrorBoundary>
+            <ApiUrlProviderWrapper>
+              <ServiceWorkerRegistration />
+              <Navbar />
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+              <PWAInstallPrompt />
+              <Toaster 
+                theme="dark" 
+                position="bottom-right"
+                toastOptions={{
+                  style: {
+                    background: '#1f2937',
+                    border: '1px solid #374151',
+                    color: '#f9fafb',
+                  },
+                }}
+              />
+            </ApiUrlProviderWrapper>
+          </ErrorBoundary>
         </body>
       </html>
     </AuthProviderWrapper>
