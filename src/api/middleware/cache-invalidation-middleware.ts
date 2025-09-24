@@ -3,25 +3,12 @@ import { CacheInvalidationService } from './cache-invalidation';
 
 /**
  * Interface for cache invalidation options
+ * Simplified: Just clear all cache for non-GET requests
  */
 export interface CacheInvalidationOptions {
   /**
-   * Specific cache keys to invalidate
-   */
-  keys?: string[];
-  
-  /**
-   * Cache key patterns to invalidate
-   */
-  patterns?: string[];
-  
-  /**
-   * Resource type for automatic invalidation (e.g., 'movie', 'series', 'episode')
-   */
-  resourceType?: 'movie' | 'series' | 'episode' | 'transcode' | 'folder' | 'conflict' | 'progress' | 'scanner' | 'stream' | 'webhook';
-  
-  /**
-   * Custom invalidation function
+   * Custom invalidation function for special cases
+   * If not provided, all cache will be cleared
    */
   customInvalidation?: (req: Request, res: Response) => Promise<void>;
 }
@@ -62,212 +49,26 @@ export const invalidateCache = (options: CacheInvalidationOptions = {}) => {
 
 /**
  * Perform cache invalidation based on options and request context
+ * Simplified approach: Clear all cache for non-GET requests
  */
 async function performCacheInvalidation(
   req: Request, 
   res: Response, 
   options: CacheInvalidationOptions
 ): Promise<void> {
-  console.log(`Starting cache invalidation for ${req.method} ${req.originalUrl} with options:`, options);
+  console.log(`Starting simplified cache invalidation for ${req.method} ${req.originalUrl}`);
   
-  // Invalidate specific keys if provided
-  if (options.keys && options.keys.length > 0) {
-    console.log(`Invalidating specific keys:`, options.keys);
-    for (const key of options.keys) {
-      await CacheInvalidationService.clearKey(key);
-    }
-  }
+  // For non-GET requests, simply clear all cache to ensure no stale data
+  console.log(`Clearing all cache entries to prevent stale data`);
+  await CacheInvalidationService.clearAllCache();
   
-  // Invalidate patterns if provided
-  if (options.patterns && options.patterns.length > 0) {
-    console.log(`Invalidating patterns:`, options.patterns);
-    for (const pattern of options.patterns) {
-      await CacheInvalidationService.clearPattern(pattern);
-    }
-  }
-  
-  // Handle resource-specific invalidation
-  if (options.resourceType) {
-    console.log(`Invalidating by resource type: ${options.resourceType}`);
-    await invalidateByResourceType(req, options.resourceType);
-  }
-  
-  // Always clear the specific endpoint that was called
-  const specificCacheKey = `cache:${req.baseUrl}${req.path}`;
-  console.log(`Clearing specific cache key: ${specificCacheKey}`);
-  await CacheInvalidationService.clearKey(specificCacheKey);
-  
-  // Also clear any query parameter variations of this endpoint
-  const basePattern = `cache:${req.baseUrl}${req.path}*`;
-  console.log(`Clearing pattern: ${basePattern}`);
-  await CacheInvalidationService.clearPattern(basePattern);
-  
-  // Execute custom invalidation if provided
+  // Execute custom invalidation if provided (for special cases)
   if (options.customInvalidation) {
     console.log(`Executing custom invalidation function`);
     await options.customInvalidation(req, res);
   }
 }
 
-/**
- * Invalidate cache based on resource type and request parameters
- */
-async function invalidateByResourceType(req: Request, resourceType: string): Promise<void> {
-  const { params, body } = req;
-  console.log(`Invalidating by resource type: ${resourceType}, params:`, params, 'body:', body);
-  
-  switch (resourceType) {
-    case 'movie':
-      if (params.id) {
-        // Specific movie
-        await CacheInvalidationService.clearMovieCache(params.id);
-      } else {
-        // All movies
-        await CacheInvalidationService.clearMoviesCache();
-      }
-      break;
-      
-    case 'series':
-      if (params.id || params.seriesId) {
-        // Specific series
-        const seriesId = params.id || params.seriesId;
-        await CacheInvalidationService.clearSeriesCache(seriesId);
-      } else {
-        // All series
-        await CacheInvalidationService.clearSeriesCache(undefined);
-      }
-      break;
-      
-    case 'episode':
-      if (params.seriesId && params.seasonNumber) {
-        // Specific episode or season
-        await CacheInvalidationService.clearEpisodeCache(
-          params.seriesId,
-          parseInt(params.seasonNumber),
-          params.episodeNumber ? parseInt(params.episodeNumber) : undefined
-        );
-      } else if (params.id) {
-        // Episode by ID - need to clear series cache too
-        await CacheInvalidationService.clearKey(`cache:/api/episodes/${params.id}`);
-        await CacheInvalidationService.clearSeriesCache();
-      }
-      break;
-      
-    case 'transcode':
-      console.log(`Transcode cache invalidation - path: ${req.path}, params:`, params);
-      if (req.path.includes('/movie/')) {
-        // Movie transcode
-        const movieId = params.id;
-        console.log(`Clearing movie transcode cache for movie ID: ${movieId}`);
-        await CacheInvalidationService.clearMovieTranscodeCache(movieId);
-        await CacheInvalidationService.clearMovieCache(movieId);
-        
-        // Also clear the specific transcode endpoint that was called
-        await CacheInvalidationService.clearKey(`cache:${req.baseUrl}${req.path}`);
-        
-        // Clear all transcode status caches that might include this movie
-        await CacheInvalidationService.clearTranscodeCache();
-      } else if (req.path.includes('/episode/')) {
-        // Episode transcode - this would need episode metadata from body or params
-        const episodeId = params.id;
-        console.log(`Clearing episode transcode cache for episode ID: ${episodeId}`);
-        
-        // If we have the full episode context in the body
-        if (body && body.seriesId && body.seasonNumber && body.episodeNumber) {
-          await CacheInvalidationService.clearEpisodeTranscodeCache(
-            episodeId,
-            body.seriesId,
-            body.seasonNumber,
-            body.episodeNumber
-          );
-        } else {
-          // Otherwise just clear all transcode caches
-          await CacheInvalidationService.clearTranscodeCache();
-        }
-        
-        // Also clear the specific transcode endpoint that was called
-        await CacheInvalidationService.clearKey(`cache:${req.baseUrl}${req.path}`);
-      } else if (params.status) {
-        // Transcode status
-        console.log(`Clearing transcode status cache for status: ${params.status}`);
-        await CacheInvalidationService.clearTranscodeStatusCache(params.status);
-        
-        // Also clear the specific status endpoint that was called
-        await CacheInvalidationService.clearKey(`cache:${req.baseUrl}${req.path}`);
-      } else {
-        // All transcode
-        console.log(`Clearing all transcode caches`);
-        await CacheInvalidationService.clearTranscodeCache();
-        
-        // Also clear the specific endpoint that was called
-        await CacheInvalidationService.clearKey(`cache:${req.baseUrl}${req.path}`);
-      }
-      break;
-      
-    case 'folder':
-      await CacheInvalidationService.clearMediaFoldersCache();
-      break;
-      
-    case 'conflict':
-      await CacheInvalidationService.clearConflictsCache();
-      break;
-      
-    case 'progress':
-      const { clerkId, tmdbId } = params;
-      await CacheInvalidationService.clearProgressCache(clerkId, tmdbId);
-      break;
-      
-    case 'stream':
-      if (req.path.includes('/movies/')) {
-        const movieId = params.id;
-        // Clear movie streaming caches
-        await CacheInvalidationService.clearPattern(`cache:/api/movies/${movieId}/hls*`);
-      } else if (req.path.includes('/episodes/')) {
-        const episodeId = params.id;
-        // Clear episode streaming caches
-        await CacheInvalidationService.clearPattern(`cache:/api/episodes/${episodeId}/hls*`);
-      }
-      break;
-      
-    case 'webhook':
-      // For Clerk webhooks, we might need to invalidate user-related caches
-      if (req.path.includes('/clerk')) {
-        // Clear user progress caches as they might be affected by user changes
-        await CacheInvalidationService.clearProgressCache();
-      }
-      break;
-      
-    case 'scanner':
-      if (req.path.includes('/folders')) {
-        if (params.id) {
-          // Specific folder
-          await CacheInvalidationService.clearMediaFoldersCache();
-        } else {
-          // All folders
-          await CacheInvalidationService.clearMediaFoldersCache();
-        }
-      } else if (req.path.includes('/conflicts')) {
-        if (params.id) {
-          // Specific conflict
-          await CacheInvalidationService.clearConflictsCache();
-        } else {
-          // All conflicts
-          await CacheInvalidationService.clearConflictsCache();
-        }
-      } else if (req.path.includes('/scan')) {
-        // After scanning, clear all relevant caches
-        await CacheInvalidationService.clearMoviesCache();
-        await CacheInvalidationService.clearSeriesCache(undefined);
-        await CacheInvalidationService.clearMediaFoldersCache();
-        await CacheInvalidationService.clearConflictsCache();
-      }
-      break;
-      
-    default:
-      // For unknown resource types, invalidate based on the URL path
-      await CacheInvalidationService.clearPattern(`cache:${req.baseUrl}*`);
-  }
-}
 
 /**
  * Create a router with automatic cache invalidation for data-modifying routes

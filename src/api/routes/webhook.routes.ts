@@ -7,8 +7,8 @@ import { createSmartCacheRouter } from '../middleware/cache-invalidation-middlew
 const router = createSmartCacheRouter(
   // No cache options needed for webhooks
   { ttl: 0 },
-  // Invalidation options for data-modifying routes
-  { resourceType: 'webhook' }
+  // Invalidation options for data-modifying routes (simplified: clear all cache)
+  {}
 );
 const webhookController = new WebhookController();
 

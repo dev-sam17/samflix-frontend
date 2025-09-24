@@ -42,8 +42,8 @@ interface ResolveConflictBody {
 const router = createSmartCacheRouter(
   // Cache options for GET routes
   { ttl: 1800 }, // 30 minutes cache
-  // Invalidation options for data-modifying routes
-  { resourceType: "scanner" }
+  // Invalidation options for data-modifying routes (simplified: clear all cache)
+  {}
 );
 
 const scanHandler: AsyncRouteHandler = async (_req, res) => {

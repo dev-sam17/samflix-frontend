@@ -8,8 +8,8 @@ type RequestHandler = (req: Request, res: Response, next: NextFunction) => void;
 const router = createSmartCacheRouter(
   // Cache options for GET routes
   { ttl: 3600 },
-  // Invalidation options for data-modifying routes
-  { resourceType: 'transcode' }
+  // Invalidation options for data-modifying routes (simplified: clear all cache)
+  {}
 );
 
 /**
