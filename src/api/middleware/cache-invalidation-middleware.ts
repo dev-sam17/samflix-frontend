@@ -38,21 +38,22 @@ export const invalidateCache = (options: CacheInvalidationOptions = {}) => {
     // Override the end method to perform cache invalidation after response is sent
     // @ts-ignore - TypeScript doesn't like us overriding the end method, but it works
     res.end = function (chunk?: any, encoding?: any, callback?: any) {
+      // Call the original end method first
+      const result = originalEnd.call(this, chunk, encoding, callback);
+      
       // Only invalidate cache for successful responses (2xx status codes)
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        // Execute cache invalidation asynchronously (don't block response)
-        setTimeout(async () => {
-          try {
-            await performCacheInvalidation(req, res, options);
+        // Execute cache invalidation synchronously after response is sent
+        performCacheInvalidation(req, res, options)
+          .then(() => {
             console.log('Cache invalidation completed for:', req.originalUrl);
-          } catch (error) {
+          })
+          .catch((error) => {
             console.error('Error during cache invalidation:', error);
-          }
-        }, 0);
+          });
       }
       
-      // Call the original end method
-      return originalEnd.call(this, chunk, encoding, callback);
+      return result;
     };
     
     next();
@@ -67,8 +68,11 @@ async function performCacheInvalidation(
   res: Response, 
   options: CacheInvalidationOptions
 ): Promise<void> {
+  console.log(`Starting cache invalidation for ${req.method} ${req.originalUrl} with options:`, options);
+  
   // Invalidate specific keys if provided
   if (options.keys && options.keys.length > 0) {
+    console.log(`Invalidating specific keys:`, options.keys);
     for (const key of options.keys) {
       await CacheInvalidationService.clearKey(key);
     }
@@ -76,6 +80,7 @@ async function performCacheInvalidation(
   
   // Invalidate patterns if provided
   if (options.patterns && options.patterns.length > 0) {
+    console.log(`Invalidating patterns:`, options.patterns);
     for (const pattern of options.patterns) {
       await CacheInvalidationService.clearPattern(pattern);
     }
@@ -83,11 +88,23 @@ async function performCacheInvalidation(
   
   // Handle resource-specific invalidation
   if (options.resourceType) {
+    console.log(`Invalidating by resource type: ${options.resourceType}`);
     await invalidateByResourceType(req, options.resourceType);
   }
   
+  // Always clear the specific endpoint that was called
+  const specificCacheKey = `cache:${req.baseUrl}${req.path}`;
+  console.log(`Clearing specific cache key: ${specificCacheKey}`);
+  await CacheInvalidationService.clearKey(specificCacheKey);
+  
+  // Also clear any query parameter variations of this endpoint
+  const basePattern = `cache:${req.baseUrl}${req.path}*`;
+  console.log(`Clearing pattern: ${basePattern}`);
+  await CacheInvalidationService.clearPattern(basePattern);
+  
   // Execute custom invalidation if provided
   if (options.customInvalidation) {
+    console.log(`Executing custom invalidation function`);
     await options.customInvalidation(req, res);
   }
 }
@@ -97,6 +114,7 @@ async function performCacheInvalidation(
  */
 async function invalidateByResourceType(req: Request, resourceType: string): Promise<void> {
   const { params, body } = req;
+  console.log(`Invalidating by resource type: ${resourceType}, params:`, params, 'body:', body);
   
   switch (resourceType) {
     case 'movie':
@@ -136,13 +154,23 @@ async function invalidateByResourceType(req: Request, resourceType: string): Pro
       break;
       
     case 'transcode':
+      console.log(`Transcode cache invalidation - path: ${req.path}, params:`, params);
       if (req.path.includes('/movie/')) {
         // Movie transcode
         const movieId = params.id;
+        console.log(`Clearing movie transcode cache for movie ID: ${movieId}`);
         await CacheInvalidationService.clearMovieTranscodeCache(movieId);
+        await CacheInvalidationService.clearMovieCache(movieId);
+        
+        // Also clear the specific transcode endpoint that was called
+        await CacheInvalidationService.clearKey(`cache:${req.baseUrl}${req.path}`);
+        
+        // Clear all transcode status caches that might include this movie
+        await CacheInvalidationService.clearTranscodeCache();
       } else if (req.path.includes('/episode/')) {
         // Episode transcode - this would need episode metadata from body or params
         const episodeId = params.id;
+        console.log(`Clearing episode transcode cache for episode ID: ${episodeId}`);
         
         // If we have the full episode context in the body
         if (body && body.seriesId && body.seasonNumber && body.episodeNumber) {
@@ -156,12 +184,23 @@ async function invalidateByResourceType(req: Request, resourceType: string): Pro
           // Otherwise just clear all transcode caches
           await CacheInvalidationService.clearTranscodeCache();
         }
+        
+        // Also clear the specific transcode endpoint that was called
+        await CacheInvalidationService.clearKey(`cache:${req.baseUrl}${req.path}`);
       } else if (params.status) {
         // Transcode status
+        console.log(`Clearing transcode status cache for status: ${params.status}`);
         await CacheInvalidationService.clearTranscodeStatusCache(params.status);
+        
+        // Also clear the specific status endpoint that was called
+        await CacheInvalidationService.clearKey(`cache:${req.baseUrl}${req.path}`);
       } else {
         // All transcode
+        console.log(`Clearing all transcode caches`);
         await CacheInvalidationService.clearTranscodeCache();
+        
+        // Also clear the specific endpoint that was called
+        await CacheInvalidationService.clearKey(`cache:${req.baseUrl}${req.path}`);
       }
       break;
       

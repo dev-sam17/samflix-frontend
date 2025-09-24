@@ -30,8 +30,8 @@ export class CacheInvalidationService {
    */
   static async clearKey(key: string): Promise<void> {
     try {
-      await redisClient.del(key);
-      console.log(`Cache cleared for key: ${key}`);
+      const result = await redisClient.del(key);
+      console.log(`Cache cleared for key: ${key} (${result} keys deleted)`);
     } catch (error) {
       console.error(`Error clearing cache for key ${key}:`, error);
     }
@@ -44,6 +44,9 @@ export class CacheInvalidationService {
   static async clearPattern(pattern: string): Promise<void> {
     try {
       let cursor = '0';
+      let totalCleared = 0;
+      console.log(`Starting pattern scan for: ${pattern}`);
+      
       do {
         // Scan for keys matching the pattern
         const [nextCursor, keys] = await redisClient.scan(
@@ -58,10 +61,13 @@ export class CacheInvalidationService {
         
         // Delete found keys if any
         if (keys.length > 0) {
+          console.log(`Found ${keys.length} keys matching pattern ${pattern}:`, keys);
           await redisClient.del(...keys);
-          console.log(`Cleared ${keys.length} cache entries matching pattern: ${pattern}`);
+          totalCleared += keys.length;
         }
       } while (cursor !== '0');
+      
+      console.log(`Cleared ${totalCleared} total cache entries matching pattern: ${pattern}`);
     } catch (error) {
       console.error(`Error clearing cache for pattern ${pattern}:`, error);
     }
