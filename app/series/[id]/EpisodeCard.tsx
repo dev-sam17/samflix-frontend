@@ -24,7 +24,7 @@ export function EpisodeCard({
 
   return (
     <>
-      <Card className="bg-gray-900/50 border-gray-800 hover:border-gray-600 transition-all duration-300 hover:bg-gray-800/50">
+      <Card className="group bg-gray-900/50 border-gray-800 hover:border-red-500/50 transition-all duration-300 hover:bg-gray-800/50">
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -40,7 +40,7 @@ export function EpisodeCard({
 
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between mb-2">
-                <h4 className="font-semibold text-white line-clamp-1">
+                <h4 className="font-semibold text-white line-clamp-1 group-hover:text-red-400 transition-colors">
                   {episode.title}
                 </h4>
                 <div className="flex gap-2 ml-4">

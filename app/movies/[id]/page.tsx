@@ -3,13 +3,25 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { HardDrive, ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  Star,
+  Calendar,
+  Clock,
+  Film,
+  Play,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { api } from "@/lib/api";
-import { MovieHeader } from "./MovieHeader";
 import { useParams } from "next/navigation";
 import type { Movie } from "@/lib/types";
+import { TranscodeStatus } from "@/lib/types";
 import { useApiWithContext } from "@/hooks/use-api-with-context";
+import { useApi } from "@/hooks/use-api";
+import { useState } from "react";
 
 function LoadingSkeleton() {
   return (
@@ -35,101 +47,167 @@ function LoadingSkeleton() {
   );
 }
 
-function MovieTechnicalDetails({ movie }: { movie: Movie }) {
-  if (!movie.quality && !movie.resolution && !movie.rip && !movie.sound) {
+function RecommendationCarousel({ movie }: { movie: Movie }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const itemsPerPage = 6;
+
+  // Get movies from the same genres
+  const { data: recommendedMovies } = useApiWithContext(
+    (baseUrl) => () => {
+      if (!movie.genres || movie.genres.length === 0) {
+        return Promise.resolve({
+          data: [],
+          meta: { page: 1, limit: 0, total: 0, totalPages: 0 },
+        });
+      }
+      // Use the first genre to get recommendations
+      const genre = movie.genres[0];
+      return api.client.movies.getAll({
+        baseUrl,
+        limit: 20,
+        genre,
+        sortBy: "rating",
+        sortOrder: "desc",
+        status: "COMPLETED",
+      });
+    },
+    [movie.genres]
+  );
+
+  // Filter out the current movie, only show completed movies, and limit to 12 items
+  const filteredMovies = (recommendedMovies?.data || [])
+    .filter(
+      (m: Movie) =>
+        m.id !== movie.id && m.transcodeStatus === TranscodeStatus.COMPLETED
+    )
+    .slice(0, 12);
+
+  const maxIndex = Math.max(0, filteredMovies.length - itemsPerPage);
+
+  const nextSlide = () => {
+    setCurrentIndex((prev) => Math.min(prev + 1, maxIndex));
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => Math.max(prev - 1, 0));
+  };
+
+  if (filteredMovies.length === 0) {
     return null;
   }
 
   return (
-    <Card className="bg-gray-900/50 border-gray-800">
-      <CardContent className="p-6">
-        <h3 className="text-xl font-semibold mb-4 text-white">
-          Technical Details
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {movie.quality && (
-            <div>
-              <div className="text-sm text-gray-400 mb-1">Quality</div>
-              <Badge variant="secondary" className="bg-green-600 text-white">
-                {movie.quality}
-              </Badge>
-            </div>
-          )}
-          {movie.resolution && (
-            <div>
-              <div className="text-sm text-gray-400 mb-1">Resolution</div>
-              <Badge
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">More Like This</h2>
+        <div className="flex items-center gap-2">
+          {filteredMovies.length > itemsPerPage && (
+            <>
+              <Button
                 variant="outline"
-                className="border-gray-600 text-gray-300"
+                size="icon"
+                onClick={prevSlide}
+                disabled={currentIndex === 0}
+                className="border-gray-600 text-gray-300 hover:bg-white/10 disabled:opacity-50"
               >
-                {movie.resolution}
-              </Badge>
-            </div>
-          )}
-          {movie.rip && (
-            <div>
-              <div className="text-sm text-gray-400 mb-1">Source</div>
-              <Badge
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button
                 variant="outline"
-                className="border-gray-600 text-gray-300"
+                size="icon"
+                onClick={nextSlide}
+                disabled={currentIndex >= maxIndex}
+                className="border-gray-600 text-gray-300 hover:bg-white/10 disabled:opacity-50"
               >
-                {movie.rip}
-              </Badge>
-            </div>
-          )}
-          {movie.sound && (
-            <div>
-              <div className="text-sm text-gray-400 mb-1">Audio</div>
-              <Badge
-                variant="outline"
-                className="border-gray-600 text-gray-300"
-              >
-                {movie.sound}
-              </Badge>
-            </div>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </>
           )}
         </div>
-      </CardContent>
-    </Card>
-  );
-}
+      </div>
 
-function MovieFileInfo({ movie }: { movie: Movie }) {
-  return (
-    <Card className="bg-gray-900/50 border-gray-800">
-      <CardContent className="p-6">
-        <h3 className="text-xl font-semibold mb-4 text-white flex items-center gap-2">
-          <HardDrive className="w-5 h-5" />
-          File Information
-        </h3>
-        <div className="space-y-3">
-          <div>
-            <div className="text-sm text-gray-400 mb-1">File Name</div>
-            <code className="text-sm bg-gray-800 px-2 py-1 rounded text-green-400 break-all">
-              {movie.fileName}
-            </code>
-          </div>
-          <div>
-            <div className="text-sm text-gray-400 mb-1">File Path</div>
-            <code className="text-sm bg-gray-800 px-2 py-1 rounded text-blue-400 break-all">
-              {movie.filePath}
-            </code>
-          </div>
-          {movie.provider && (
-            <div>
-              <div className="text-sm text-gray-400 mb-1">Provider</div>
-              <span className="text-white">{movie.provider}</span>
-            </div>
-          )}
-          <div>
-            <div className="text-sm text-gray-400 mb-1">Added</div>
-            <span className="text-white">
-              {new Date(movie.createdAt).toLocaleDateString()}
-            </span>
-          </div>
+      <div className="relative overflow-hidden">
+        <div
+          className="flex transition-transform duration-300 ease-in-out gap-4"
+          style={{
+            transform: `translateX(-${(currentIndex / itemsPerPage) * 100}%)`,
+          }}
+        >
+          {filteredMovies.map((recMovie: Movie) => (
+            <Link
+              key={recMovie.id}
+              href={`/movies/${recMovie.id}`}
+              className="flex-shrink-0 w-[calc(50%-8px)] md:w-[calc(25%-12px)] lg:w-[calc(16.666%-14px)] group"
+            >
+              <Card className="bg-gray-900/50 border-gray-800 hover:border-red-500/50 transition-all duration-300 group-hover:scale-105">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-t-lg">
+                  <Image
+                    src={api.utils.getTmdbImageUrl(
+                      recMovie.posterPath || "",
+                      "w300"
+                    )}
+                    alt={recMovie.title}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-110"
+                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 25vw, 16.666vw"
+                  />
+
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors duration-300 flex items-center justify-center">
+                    <Play className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </div>
+
+                  <Badge className="absolute top-2 left-2 bg-black/70 text-white border-gray-600">
+                    <Film className="w-3 h-3 mr-1" />
+                    Movie
+                  </Badge>
+
+                  {recMovie.rating && recMovie.rating > 0 && (
+                    <Badge className="absolute top-2 right-2 bg-black/70 text-yellow-400 border-yellow-400/50">
+                      <Star className="w-3 h-3 mr-1 fill-current" />
+                      {recMovie.rating.toFixed(1)}
+                    </Badge>
+                  )}
+                </div>
+
+                <CardContent className="p-3 space-y-2">
+                  <h3 className="font-semibold text-white text-sm line-clamp-2 group-hover:text-red-400 transition-colors">
+                    {recMovie.title}
+                  </h3>
+
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {recMovie.year}
+                    </div>
+
+                    {recMovie.runtime && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {Math.floor(recMovie.runtime / 60)}h{" "}
+                        {recMovie.runtime % 60}m
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-1 flex-wrap">
+                    {Array.isArray(recMovie.genres) &&
+                      recMovie.genres.slice(0, 2).map((genre: string) => (
+                        <Badge
+                          key={genre}
+                          variant="outline"
+                          className="text-xs border-gray-600 text-gray-300 px-1 py-0"
+                        >
+                          {genre}
+                        </Badge>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -165,13 +243,148 @@ export default function MovieDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="pb-16">
-        <MovieHeader movie={movie} />
+    <div className="container mx-auto min-h-screen bg-black text-white">
+      {/* Hero Section */}
+      <div className="relative h-[35vh] overflow-hidden">
+        <Image
+          src={api.utils.getTmdbImageUrl(movie.backdropPath || "", "w780")}
+          alt={movie.title}
+          fill
+          className="object-cover"
+          priority
+          quality={75}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-transparent" />
 
-        <div className="container mx-auto px-4 py-8 space-y-8">
-          <MovieTechnicalDetails movie={movie} />
-          <MovieFileInfo movie={movie} />
+        {/* Back Button */}
+        <div className="absolute top-6 left-6 z-20">
+          <Link href="/movies">
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-black/50 border-gray-600 text-white hover:bg-black/70 backdrop-blur-sm"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Movies
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 -mt-20 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Poster */}
+          <div className="lg:col-span-1">
+            <Card className="group bg-gray-900/90 border-gray-700 hover:border-red-500/50 transition-all duration-300 backdrop-blur-sm shadow-2xl">
+              <CardContent className="p-2">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-md">
+                  <Image
+                    src={api.utils.getTmdbImageUrl(
+                      movie.posterPath || "",
+                      "w300"
+                    )}
+                    alt={movie.title}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    quality={80}
+                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 25vw, 20vw"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Details */}
+          <div className="lg:col-span-3 space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center align-bottom gap-2 text-sm text-gray-300 flex-wrap">
+                <Badge className="bg-red-600 text-white border-red-600 text-xs">
+                  <Film className="w-3 h-3 mr-1" />
+                  Movie
+                </Badge>
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  <span>{movie.year}</span>
+                </div>
+                {movie.runtime && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    <span>
+                      {Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m
+                    </span>
+                  </div>
+                )}
+                {movie.rating && movie.rating > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    <span>{movie.rating.toFixed(1)}</span>
+                  </div>
+                )}
+              </div>
+
+              <h1 className="text-3xl lg:text-4xl font-bold text-white leading-tight">
+                {movie.title}
+              </h1>
+
+              <div className="flex gap-1 flex-wrap">
+                {Array.isArray(movie.genres) &&
+                  movie.genres.slice(0, 4).map((genre: string) => (
+                    <Badge
+                      key={genre}
+                      variant="outline"
+                      className="border-gray-600 text-gray-300 hover:border-red-500 hover:text-red-400 transition-colors text-xs px-2 py-1"
+                    >
+                      {genre}
+                    </Badge>
+                  ))}
+              </div>
+
+              <p className="text-gray-300 text-base leading-relaxed line-clamp-3">
+                {movie.overview}
+              </p>
+
+              <div className="flex gap-3">
+                <Button className="bg-red-600 hover:bg-red-700 px-6">
+                  <Play className="w-4 h-4 mr-2" />
+                  Play
+                </Button>
+              </div>
+            </div>
+
+            {/* Movie Stats - Compact */}
+            <div className="flex gap-3 flex-wrap">
+              {movie.quality && (
+                <div className="bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2 text-center hover:border-red-500/30 transition-colors">
+                  <div className="text-sm font-semibold text-red-400">
+                    {movie.quality}
+                  </div>
+                  <div className="text-xs text-gray-400">Quality</div>
+                </div>
+              )}
+              {movie.rip && (
+                <div className="bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2 text-center hover:border-red-500/30 transition-colors">
+                  <div className="text-sm font-semibold text-red-400">
+                    {movie.rip}
+                  </div>
+                  <div className="text-xs text-gray-400">Source</div>
+                </div>
+              )}
+              {movie.sound && (
+                <div className="bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2 text-center hover:border-red-500/30 transition-colors">
+                  <div className="text-sm font-semibold text-red-400">
+                    {movie.sound}
+                  </div>
+                  <div className="text-xs text-gray-400">Audio</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Recommendations Section */}
+        <div className="mt-8">
+          <RecommendationCarousel movie={movie} />
         </div>
       </div>
     </div>

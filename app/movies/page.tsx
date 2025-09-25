@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, Grid, List, Star, Clock } from "lucide-react";
+import { Search, Filter, Grid, List, Star, Clock, Play, Film } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/lib/api";
@@ -117,7 +117,7 @@ function MovieCard({
 
   return (
     <Link href={`/movies/${movie.id}`}>
-      <Card className="group bg-gray-900/50 border-gray-800 hover:border-gray-600 transition-all duration-300 hover:scale-105 cursor-pointer">
+      <Card className="group bg-gray-900/50 border-gray-800 hover:border-red-500/50 transition-all duration-300 hover:scale-105 cursor-pointer">
         <div className="relative aspect-[2/3] overflow-hidden rounded-t-lg">
           <Image
             src={api.utils.getTmdbImageUrl(movie.posterPath || "")}
@@ -125,29 +125,40 @@ function MovieCard({
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-110"
           />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
-          <div className="absolute top-2 right-2 flex gap-2">
-            {movie.quality && (
-              <Badge variant="secondary" className="bg-green-600 text-white">
-                {movie.quality}
-              </Badge>
-            )}
+          
+          {/* Play Overlay */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors duration-300 flex items-center justify-center">
+            <Play className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
-          <div className="absolute bottom-2 left-2 right-2">
-            {movie.rating && (
-              <div className="flex items-center gap-1 text-white text-sm">
-                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                {movie.rating}
-              </div>
-            )}
-          </div>
+
+          {/* Type Badge */}
+          <Badge className="absolute top-2 left-2 bg-black/70 text-white border-gray-600">
+            <Film className="w-3 h-3 mr-1" />
+            Movie
+          </Badge>
+
+          {/* Rating Badge */}
+          {movie.rating && movie.rating > 0 && (
+            <Badge className="absolute top-2 right-2 bg-black/70 text-yellow-400 border-yellow-400/50">
+              <Star className="w-3 h-3 mr-1 fill-current" />
+              {movie.rating.toFixed(1)}
+            </Badge>
+          )}
+
+          {/* Quality Badge */}
+          {movie.quality && (
+            <Badge className="absolute bottom-2 right-2 bg-green-600 text-white">
+              {movie.quality}
+            </Badge>
+          )}
         </div>
 
-        <CardContent className="p-4">
-          <h3 className="font-semibold text-white mb-2 line-clamp-1">
+        <CardContent className="p-3 space-y-2">
+          <h3 className="font-semibold text-white text-sm line-clamp-2 group-hover:text-red-400 transition-colors">
             {movie.title}
           </h3>
-          <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
+          
+          <div className="flex items-center justify-between text-xs text-gray-400">
             <span>{movie.year}</span>
             {movie.runtime && (
               <div className="flex items-center gap-1">
@@ -156,12 +167,13 @@ function MovieCard({
               </div>
             )}
           </div>
+
           <div className="flex gap-1 flex-wrap">
             {Array.isArray(movie.genres) && movie.genres.slice(0, 2).map((genre: string) => (
               <Badge
                 key={genre}
                 variant="outline"
-                className="text-xs border-gray-600 text-gray-300"
+                className="text-xs border-gray-600 text-gray-300 px-1 py-0"
               >
                 {genre}
               </Badge>

@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, Grid, List, Calendar } from "lucide-react";
+import { Search, Filter, Grid, List, Calendar, Play, Tv, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -111,7 +111,7 @@ function SeriesCard({
 
   return (
     <Link href={`/series/${series.id}`}>
-      <Card className="group bg-gray-900/50 border-gray-800 hover:border-gray-600 transition-all duration-300 hover:scale-105 cursor-pointer">
+      <Card className="group bg-gray-900/50 border-gray-800 hover:border-red-500/50 transition-all duration-300 hover:scale-105 cursor-pointer">
         <div className="relative aspect-[2/3] overflow-hidden rounded-t-lg">
           <Image
             src={api.utils.getTmdbImageUrl(series.posterPath || "")}
@@ -119,52 +119,61 @@ function SeriesCard({
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-110"
           />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
-          <div className="absolute top-2 right-2">
-            <Badge
-              variant="secondary"
-              className={
-                series.status === "Ended"
-                  ? "bg-red-600 text-white"
-                  : "bg-green-600 text-white"
-              }
-            >
-              {series.status}
-            </Badge>
+          
+          {/* Play Overlay */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors duration-300 flex items-center justify-center">
+            <Play className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
+
+          {/* Type Badge */}
+          <Badge className="absolute top-2 left-2 bg-black/70 text-white border-gray-600">
+            <Tv className="w-3 h-3 mr-1" />
+            Series
+          </Badge>
+
+          {/* Status Badge */}
+          <Badge className={`absolute top-2 right-2 ${
+            series.status === "Ended"
+              ? "bg-red-600 text-white"
+              : "bg-green-600 text-white"
+          }`}>
+            {series.status}
+          </Badge>
+
+          {/* Season/Episode Info */}
           <div className="absolute bottom-2 left-2 right-2">
-            <div className="text-white text-sm">
+            <div className="text-white text-xs bg-black/70 rounded px-2 py-1">
               <div>
                 {totalSeasons} Season{totalSeasons > 1 ? "s" : ""}
               </div>
-              <div className="text-xs text-gray-300">
+              <div className="text-gray-300">
                 {totalEpisodes} Episodes
               </div>
             </div>
           </div>
         </div>
 
-        <CardContent className="p-4">
-          <h3 className="font-semibold text-white mb-2 line-clamp-1">
+        <CardContent className="p-3 space-y-2">
+          <h3 className="font-semibold text-white text-sm line-clamp-2 group-hover:text-red-400 transition-colors">
             {series.title}
           </h3>
-          <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
-            <span>
+          
+          <div className="flex items-center justify-between text-xs text-gray-400">
+            <div className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
               {series.firstAirDate
                 ? new Date(series.firstAirDate).getFullYear()
                 : "Unknown"}
-            </span>
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              {series.status}
             </div>
+            <span>{series.status}</span>
           </div>
+
           <div className="flex gap-1 flex-wrap">
             {series.genres.slice(0, 2).map((genre: string) => (
               <Badge
                 key={genre}
                 variant="outline"
-                className="text-xs border-gray-600 text-gray-300"
+                className="text-xs border-gray-600 text-gray-300 px-1 py-0"
               >
                 {genre}
               </Badge>
