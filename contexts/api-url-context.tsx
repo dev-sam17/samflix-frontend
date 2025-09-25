@@ -8,7 +8,7 @@ import React, {
 } from "react";
 
 // Use only the tunnel URL for simplicity
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://samflix-be.devsam.in";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export type ApiUrlContextType = {
   apiBaseUrl: string;
@@ -27,7 +27,7 @@ export function ApiUrlProvider({
   initialApiUrl = API_URL,
 }: ApiUrlProviderProps) {
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(
-    initialApiUrl || API_URL
+    initialApiUrl || API_URL || ""
   );
 
   return (

@@ -47,7 +47,11 @@ export function ScanProgress({ onComplete, onCancel }: ScanProgressProps) {
     setScanSummary(null)
 
     // Create EventSource for SSE connection
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://samflix-be.devsam.in"
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+    if (!API_BASE_URL) {
+      console.error("API_BASE_URL is not configured")
+      return
+    }
     const eventSource = new EventSource(`${API_BASE_URL}/api/scanner/scan`)
     eventSourceRef.current = eventSource
 
