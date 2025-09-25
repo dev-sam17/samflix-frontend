@@ -22,7 +22,9 @@ import scannerRoutes from "./api/routes/scanner.routes";
 import webhookRoutes from "./api/routes/webhook.routes";
 import transcodeRoutes from "./api/routes/transcode.routes";
 import progressRoutes from "./api/routes/progress.routes";
+import storageRoutes from "./api/routes/storage.routes";
 import { MediaScanSchedulerService } from "./services/scheduler/media-scan-scheduler.service";
+import { DiskScannerService } from "./services/storage/disk-scanner.service";
 
 // Create Express app
 const app = express();
@@ -87,6 +89,7 @@ app.use("/api/series", seriesRoutes);
 app.use("/api/scanner", scannerRoutes);
 app.use("/api/transcode", transcodeRoutes);
 app.use("/api/progress", progressRoutes);
+app.use("/api/storage", storageRoutes);
 
 // Serve media folder as static content
 // In Docker container, media folder is one level up from the project root
@@ -130,12 +133,24 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-// Initialize cron job for scanning
+// Initialize cron job for media scanning
 const scanInterval = process.env.SCAN_INTERVAL || "0 */2 * * *"; // Every 2 hours
 cron.schedule(
   scanInterval,
   async () => {
     await MediaScanSchedulerService.executeScheduledScan();
+  },
+  {
+    timezone: process.env.TZ || "UTC",
+  }
+);
+
+// Initialize cron job for disk usage scanning (every 24 hours)
+const diskScanInterval = process.env.DISK_SCAN_INTERVAL || "0 0 * * *"; // Every day at midnight
+cron.schedule(
+  diskScanInterval,
+  async () => {
+    await DiskScannerService.executeScheduledDiskScan();
   },
   {
     timezone: process.env.TZ || "UTC",
