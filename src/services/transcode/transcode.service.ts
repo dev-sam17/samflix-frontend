@@ -55,55 +55,70 @@ class TranscodeService {
   }
 
   /**
-   * Update the transcode status of all episodes in a series
+   * Update the transcode status of all episodes in a series and the series itself
    * @param seriesId The series ID
    * @param status The new transcode status
-   * @returns Array of updated episodes
+   * @returns Object containing updated series and episodes
    */
   async updateSeriesTranscodeStatus(
     seriesId: string,
     status: TranscodeStatusType
   ) {
     try {
-      // First, verify the series exists
-      const series = await prisma.tvSeries.findUnique({
-        where: { id: seriesId },
-        include: {
-          episodes: {
-            select: { id: true, title: true, transcodeStatus: true },
+      // Use Prisma transaction to ensure atomicity
+      const result = await prisma.$transaction(async (tx) => {
+        // First, verify the series exists and get episode count
+        const series = await tx.tvSeries.findUnique({
+          where: { id: seriesId },
+          include: {
+            episodes: {
+              select: { id: true, title: true, transcodeStatus: true },
+            },
           },
-        },
-      });
+        });
 
-      if (!series) {
-        throw new Error(`Series with ID ${seriesId} not found`);
-      }
+        if (!series) {
+          throw new Error(`Series with ID ${seriesId} not found`);
+        }
 
-      if (series.episodes.length === 0) {
-        throw new Error(`No episodes found for series with ID ${seriesId}`);
-      }
+        if (series.episodes.length === 0) {
+          throw new Error(`No episodes found for series with ID ${seriesId}`);
+        }
 
-      // Update all episodes in the series
-      const updatedEpisodes = await prisma.episode.updateMany({
-        where: { seriesId },
-        data: { transcodeStatus: status },
-      });
+        // Update the TV series transcode status
+        const updatedSeries = await tx.tvSeries.update({
+          where: { id: seriesId },
+          data: { transcodeStatus: status },
+        });
 
-      // Return the updated episodes with full details
-      const episodes = await prisma.episode.findMany({
-        where: { seriesId },
-        include: {
-          series: {
-            select: { id: true, title: true },
+        // Update all episodes in the series
+        const updatedEpisodesResult = await tx.episode.updateMany({
+          where: { seriesId },
+          data: { transcodeStatus: status },
+        });
+
+        // Get the updated episodes with full details
+        const updatedEpisodes = await tx.episode.findMany({
+          where: { seriesId },
+          include: {
+            series: {
+              select: { id: true, title: true, transcodeStatus: true },
+            },
           },
-        },
+        });
+
+        return {
+          series: updatedSeries,
+          episodes: updatedEpisodes,
+          episodeCount: updatedEpisodesResult.count,
+        };
       });
 
       console.log(
-        `Updated transcode status to ${status} for ${updatedEpisodes.count} episodes in series: ${series.title}`
+        `Updated transcode status to ${status} for series "${result.series.title}" and ${result.episodeCount} episodes`
       );
 
-      return episodes;
+      return result;
     } catch (error) {
       console.error("Error updating series transcode status:", error);
       throw error;
