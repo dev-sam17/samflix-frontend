@@ -21,7 +21,7 @@ WORKDIR /app
 ARG GITHUB_TOKEN
 
 # Install dependencies first (for better caching)
-RUN echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> ~/.npmrc
+# RUN echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> ~/.npmrc
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install
 
