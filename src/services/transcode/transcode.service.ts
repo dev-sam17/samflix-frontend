@@ -183,6 +183,144 @@ class TranscodeService {
       throw error;
     }
   }
+
+  /**
+   * Get comprehensive transcode statistics for all media
+   * @returns Object containing counts for each transcode status
+   */
+  async getTranscodeStats() {
+    try {
+      // Use Prisma transaction to ensure consistent data
+      const stats = await prisma.$transaction(async (tx) => {
+        // Get movie counts by status
+        const movieStats = await tx.movie.groupBy({
+          by: ['transcodeStatus'],
+          _count: {
+            transcodeStatus: true,
+          },
+        });
+
+        // Get episode counts by status
+        const episodeStats = await tx.episode.groupBy({
+          by: ['transcodeStatus'],
+          _count: {
+            transcodeStatus: true,
+          },
+        });
+
+        // Get series counts by status
+        const seriesStats = await tx.tvSeries.groupBy({
+          by: ['transcodeStatus'],
+          _count: {
+            transcodeStatus: true,
+          },
+        });
+
+        // Get total counts
+        const totalMovies = await tx.movie.count();
+        const totalEpisodes = await tx.episode.count();
+        const totalSeries = await tx.tvSeries.count();
+
+        return {
+          movieStats,
+          episodeStats,
+          seriesStats,
+          totalMovies,
+          totalEpisodes,
+          totalSeries,
+        };
+      });
+
+      // Initialize counters for each status
+      const statusCounts = {
+        PENDING: 0,
+        IN_PROGRESS: 0,
+        QUEUED: 0,
+        COMPLETED: 0,
+        FAILED: 0,
+      };
+
+      const movieCounts = { ...statusCounts };
+      const episodeCounts = { ...statusCounts };
+      const seriesCounts = { ...statusCounts };
+
+      // Process movie statistics
+      stats.movieStats.forEach((stat) => {
+        movieCounts[stat.transcodeStatus] = stat._count.transcodeStatus;
+        statusCounts[stat.transcodeStatus] += stat._count.transcodeStatus;
+      });
+
+      // Process episode statistics
+      stats.episodeStats.forEach((stat) => {
+        episodeCounts[stat.transcodeStatus] = stat._count.transcodeStatus;
+        statusCounts[stat.transcodeStatus] += stat._count.transcodeStatus;
+      });
+
+      // Process series statistics
+      stats.seriesStats.forEach((stat) => {
+        seriesCounts[stat.transcodeStatus] = stat._count.transcodeStatus;
+        statusCounts[stat.transcodeStatus] += stat._count.transcodeStatus;
+      });
+
+      // Calculate totals
+      const totalItems = stats.totalMovies + stats.totalEpisodes + stats.totalSeries;
+
+      // Calculate percentages
+      const calculatePercentage = (count: number, total: number) => 
+        total > 0 ? Math.round((count / total) * 100 * 100) / 100 : 0;
+
+      return {
+        // Overall statistics
+        pending: statusCounts.PENDING,
+        inProgress: statusCounts.IN_PROGRESS,
+        queued: statusCounts.QUEUED,
+        completed: statusCounts.COMPLETED,
+        failed: statusCounts.FAILED,
+        total: totalItems,
+
+        // Breakdown by media type
+        movies: {
+          pending: movieCounts.PENDING,
+          inProgress: movieCounts.IN_PROGRESS,
+          queued: movieCounts.QUEUED,
+          completed: movieCounts.COMPLETED,
+          failed: movieCounts.FAILED,
+          total: stats.totalMovies,
+        },
+        episodes: {
+          pending: episodeCounts.PENDING,
+          inProgress: episodeCounts.IN_PROGRESS,
+          queued: episodeCounts.QUEUED,
+          completed: episodeCounts.COMPLETED,
+          failed: episodeCounts.FAILED,
+          total: stats.totalEpisodes,
+        },
+        series: {
+          pending: seriesCounts.PENDING,
+          inProgress: seriesCounts.IN_PROGRESS,
+          queued: seriesCounts.QUEUED,
+          completed: seriesCounts.COMPLETED,
+          failed: seriesCounts.FAILED,
+          total: stats.totalSeries,
+        },
+
+        // Percentages
+        percentages: {
+          pending: calculatePercentage(statusCounts.PENDING, totalItems),
+          inProgress: calculatePercentage(statusCounts.IN_PROGRESS, totalItems),
+          queued: calculatePercentage(statusCounts.QUEUED, totalItems),
+          completed: calculatePercentage(statusCounts.COMPLETED, totalItems),
+          failed: calculatePercentage(statusCounts.FAILED, totalItems),
+        },
+
+        // Additional metadata
+        lastUpdated: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error("Error getting transcode statistics:", error);
+      throw error;
+    }
+  }
 }
 
 export const transcodeService = new TranscodeService();

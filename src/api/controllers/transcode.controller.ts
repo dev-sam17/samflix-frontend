@@ -208,6 +208,26 @@ class TranscodeController {
       });
     }
   };
+
+  /**
+   * Get comprehensive transcode statistics
+   */
+  getTranscodeStats: AsyncRequestHandler = async (_req, res) => {
+    try {
+      const stats = await transcodeService.getTranscodeStats();
+
+      res.json({
+        success: true,
+        data: stats,
+      });
+    } catch (error) {
+      console.error("Error getting transcode statistics:", error);
+      res.status(500).json({
+        error: "Failed to get transcode statistics",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  };
 }
 
 const transcodeController = new TranscodeController();

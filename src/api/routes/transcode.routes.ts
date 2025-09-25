@@ -72,4 +72,14 @@ router.get(
   transcodeController.getEpisodesByTranscodeStatus as unknown as RequestHandler
 );
 
+/**
+ * @route GET /api/transcode/stats
+ * @description Get comprehensive transcode statistics for all media
+ * @access Admin only
+ */
+router.get(
+  "/stats",
+  transcodeController.getTranscodeStats as unknown as RequestHandler
+);
+
 export default router;
