@@ -35,7 +35,7 @@ import {
   Activity,
   Loader2,
 } from "lucide-react";
-import { api } from "@/lib/api";
+import api from "@/lib/api";
 import { TranscodeStatus, Movie, TvSeries, Episode } from "@/lib/types";
 import {
   useApiWithContext,
@@ -515,6 +515,9 @@ function SeriesTable() {
                       <SelectContent className="bg-gray-900 border-gray-700">
                         <SelectItem value={TranscodeStatus.PENDING}>
                           Pending
+                        </SelectItem>
+                        <SelectItem value={TranscodeStatus.QUEUED}>
+                          Queued
                         </SelectItem>
                         <SelectItem value={TranscodeStatus.IN_PROGRESS}>
                           In Progress
