@@ -743,14 +743,36 @@ export const clientApi = {
       clerkId: string,
       tmdbId: string
     ): Promise<boolean> => {
-      return apiRequest<boolean>(
-        `/api/progress/${clerkId}/${tmdbId}`,
-        {
-          method: "DELETE",
+      const url = new URL(`/api/progress/${clerkId}/${tmdbId}`, baseUrl);
+      
+      const config: RequestInit = {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
         },
-        "no-store",
-        baseUrl
-      );
+        cache: "no-store",
+      };
+
+      try {
+        const response = await fetch(url, config);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new ApiError(
+            errorData.message || `HTTP error! status: ${response.status}`,
+            response.status,
+            errorData
+          );
+        }
+
+        // For 204 No Content, just return true (successful deletion)
+        return true;
+      } catch (error) {
+        if (error instanceof ApiError) {
+          throw error;
+        }
+        throw new ApiError("Network error occurred", 0, error);
+      }
     },
   },
 
