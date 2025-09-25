@@ -86,23 +86,25 @@ class TranscodeController {
 
       if (!seriesId || !status) {
         res.status(400).json({
-          error: "Missing required parameters: seriesId and status are required",
+          error:
+            "Missing required parameters: seriesId and status are required",
         });
         return;
       }
 
-      const updatedEpisodes = await transcodeService.updateSeriesTranscodeStatus(
-        seriesId,
-        status as TranscodeStatusType
-      );
+      const updatedEpisodes =
+        await transcodeService.updateSeriesTranscodeStatus(
+          seriesId,
+          status as TranscodeStatusType
+        );
 
       res.json({
         success: true,
         message: "Series transcode status updated successfully",
         data: {
           seriesId,
-          updatedEpisodesCount: updatedEpisodes.length,
-          episodes: updatedEpisodes,
+          updatedEpisodesCount: updatedEpisodes.episodeCount,
+          episodes: updatedEpisodes.episodes,
         },
       });
     } catch (error) {
