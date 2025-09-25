@@ -776,6 +776,69 @@ export const clientApi = {
     },
   },
 
+  storage: {
+    // Get storage statistics
+    getStats: async (): Promise<{
+      totalSpaceOccupied: string;
+      spaceOccupiedByRawMedia: string;
+      spaceOccupiedByHlsMedia: string;
+      totalDiskSpace: string;
+      lastScanTime: string | null;
+      cached: boolean;
+    }> => {
+      return apiRequest(
+        "/api/storage/stats",
+        {},
+        "no-store",
+        API_BASE_URL
+      );
+    },
+
+    // Get scan status
+    getScanStatus: async (): Promise<{
+      lastScanTime: string | null;
+      isScanning: boolean;
+    }> => {
+      return apiRequest(
+        "/api/storage/scan-status",
+        {},
+        "no-store",
+        API_BASE_URL
+      );
+    },
+
+    // Force disk scan
+    forceScan: async (): Promise<{
+      message: string;
+      status: string;
+    }> => {
+      return apiRequest(
+        "/api/storage/force-scan",
+        {
+          method: "POST",
+        },
+        "no-store",
+        API_BASE_URL
+      );
+    },
+
+    // Update total disk space
+    updateDiskSpace: async (totalDiskSpace: string): Promise<{
+      message: string;
+      totalDiskSpace: string;
+    }> => {
+      return apiRequest(
+        "/api/storage/update-disk-space",
+        {
+          method: "POST",
+          body: JSON.stringify({ totalDiskSpace }),
+        },
+        "no-store",
+        API_BASE_URL
+      );
+    },
+  },
+
   utils: {
     // Get TMDB image URL
     getTmdbImageUrl: (
@@ -822,6 +885,7 @@ export const clientApi = {
 export const api = {
   server: serverApi,
   client: clientApi,
+  storage: clientApi.storage,
   utils: clientApi.utils,
 };
 
