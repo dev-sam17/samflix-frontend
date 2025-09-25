@@ -566,14 +566,26 @@ export default function TranscoderPage() {
     []
   );
 
-  // Mock statistics - in a real app, you'd fetch these from your API
-  const stats = {
-    totalMovies: 0, // You can implement API calls to get actual counts
-    totalEpisodes: 0,
-    completedItems: 0,
-    pendingItems: 0,
-    failedItems: 0,
-    inProgressItems: 0,
+  // Get transcode statistics
+  const { data: statsData, loading: statsLoading, error: statsError } = useApiWithContext(
+    (baseUrl) => () => api.client.transcode.getStats(baseUrl),
+    []
+  );
+
+  const stats = statsData?.data || {
+    completed: 0,
+    pending: 0,
+    inProgress: 0,
+    queued: 0,
+    failed: 0,
+    total: 0,
+    percentages: {
+      completed: 0,
+      pending: 0,
+      inProgress: 0,
+      queued: 0,
+      failed: 0,
+    },
   };
 
   return (
@@ -609,44 +621,86 @@ export default function TranscoderPage() {
         </div>
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-green-600/20 to-green-800/20 border-green-500/30">
-            <CardContent className="p-6 text-center">
-              <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">
-                {stats.completedItems}
-              </div>
-              <div className="text-sm text-gray-400">Completed</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 border-yellow-500/30">
-            <CardContent className="p-6 text-center">
-              <Clock className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">
-                {stats.pendingItems}
-              </div>
-              <div className="text-sm text-gray-400">Pending</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 border-blue-500/30">
-            <CardContent className="p-6 text-center">
-              <Loader2 className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">
-                {stats.inProgressItems}
-              </div>
-              <div className="text-sm text-gray-400">In Progress</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-red-600/20 to-red-800/20 border-red-500/30">
-            <CardContent className="p-6 text-center">
-              <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">
-                {stats.failedItems}
-              </div>
-              <div className="text-sm text-gray-400">Failed</div>
-            </CardContent>
-          </Card>
-        </div>
+        {statsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            {[...Array(5)].map((_, i) => (
+              <Card key={i} className="bg-gray-800/50 border-gray-700">
+                <CardContent className="p-6 text-center">
+                  <div className="w-8 h-8 bg-gray-700 rounded mx-auto mb-2 animate-pulse"></div>
+                  <div className="h-8 bg-gray-700 rounded mb-2 animate-pulse"></div>
+                  <div className="h-4 bg-gray-700 rounded animate-pulse"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : statsError ? (
+          <div className="mb-8 p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
+            <p className="text-red-400">Failed to load statistics: {statsError.message}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            <Card className="bg-gradient-to-br from-green-600/20 to-green-800/20 border-green-500/30">
+              <CardContent className="p-6 text-center">
+                <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-white">
+                  {stats.completed}
+                </div>
+                <div className="text-sm text-gray-400">Completed</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentages?.completed?.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 border-yellow-500/30">
+              <CardContent className="p-6 text-center">
+                <Clock className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-white">
+                  {stats.pending}
+                </div>
+                <div className="text-sm text-gray-400">Pending</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentages?.pending?.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 border-purple-500/30">
+              <CardContent className="p-6 text-center">
+                <AlertTriangle className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-white">
+                  {stats.queued}
+                </div>
+                <div className="text-sm text-gray-400">Queued</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentages?.queued?.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 border-blue-500/30">
+              <CardContent className="p-6 text-center">
+                <Activity className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-white">
+                  {stats.inProgress}
+                </div>
+                <div className="text-sm text-gray-400">In Progress</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentages?.inProgress?.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-red-600/20 to-red-800/20 border-red-500/30">
+              <CardContent className="p-6 text-center">
+                <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-white">
+                  {stats.failed}
+                </div>
+                <div className="text-sm text-gray-400">Failed</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentages?.failed?.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Tabs */}
         <Tabs defaultValue="movies" className="w-full">

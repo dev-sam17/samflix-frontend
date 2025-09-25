@@ -682,6 +682,95 @@ export const clientApi = {
         }>;
       }>(`/api/transcode/episodes/status/${status}`, {}, "no-store", baseUrl);
     },
+
+    // Get Transcode Statistics
+    getStats: async (baseUrl: string): Promise<{
+      success: boolean;
+      data: {
+        pending: number;
+        inProgress: number;
+        queued: number;
+        completed: number;
+        failed: number;
+        total: number;
+        movies: {
+          pending: number;
+          inProgress: number;
+          queued: number;
+          completed: number;
+          failed: number;
+          total: number;
+        };
+        episodes: {
+          pending: number;
+          inProgress: number;
+          queued: number;
+          completed: number;
+          failed: number;
+          total: number;
+        };
+        series: {
+          pending: number;
+          inProgress: number;
+          queued: number;
+          completed: number;
+          failed: number;
+          total: number;
+        };
+        percentages: {
+          pending: number;
+          inProgress: number;
+          queued: number;
+          completed: number;
+          failed: number;
+        };
+        lastUpdated: string;
+      };
+    }> => {
+      return apiRequest<{
+        success: boolean;
+        data: {
+          pending: number;
+          inProgress: number;
+          queued: number;
+          completed: number;
+          failed: number;
+          total: number;
+          movies: {
+            pending: number;
+            inProgress: number;
+            queued: number;
+            completed: number;
+            failed: number;
+            total: number;
+          };
+          episodes: {
+            pending: number;
+            inProgress: number;
+            queued: number;
+            completed: number;
+            failed: number;
+            total: number;
+          };
+          series: {
+            pending: number;
+            inProgress: number;
+            queued: number;
+            completed: number;
+            failed: number;
+            total: number;
+          };
+          percentages: {
+            pending: number;
+            inProgress: number;
+            queued: number;
+            completed: number;
+            failed: number;
+          };
+          lastUpdated: string;
+        };
+      }>("/api/transcode/stats", {}, "no-store", baseUrl);
+    },
   },
 
   progress: {
