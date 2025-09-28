@@ -3,17 +3,17 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { HLSPlayer } from "@/components/hls-player";
 import { Play, Star, Clock, RotateCcw } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
-import { api, clientApi } from "@/lib/api";
+import { api, clientApi, ApiError } from "@/lib/api";
 import { TranscodeStatus, type Movie } from "@/lib/types";
 import { runtimeFormat } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter, usePathname } from "next/navigation";
 import { SignInButton, useUser } from "@clerk/nextjs";
+import { useApiUrl } from "@/contexts/api-url-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +35,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
   const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
+  const { apiBaseUrl } = useApiUrl();
 
   // Fetch playback progress when component mounts
   useEffect(() => {
@@ -43,9 +44,14 @@ export function MovieHeader({ movie }: { movie: Movie }) {
 
       try {
         setIsLoading(true);
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+        if (!apiBaseUrl) {
+          console.error("API base URL is not configured");
+          return;
+        }
+        // Fetch user's progress for this movie
+        // Note: 404 responses are normal for unwatched movies and are handled gracefully
         const progress = await clientApi.progress.getProgress(
-          baseUrl,
+          apiBaseUrl,
           user.id,
           movie.id.toString()
         );
@@ -53,14 +59,16 @@ export function MovieHeader({ movie }: { movie: Movie }) {
           setPlaybackProgress(progress.currentTime);
         }
       } catch (error) {
-        console.error("Error fetching playback progress:", error);
+        // The getProgress function already handles 404s by returning null
+        // This catch block should only handle unexpected errors
+        console.error("Unexpected error fetching playback progress:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchProgress();
-  }, [isAuthenticated, user, movie.id]);
+  }, [isAuthenticated, user, movie.id, apiBaseUrl]);
 
   // Handle saving playback progress
   const handleTimeUpdate = useCallback(
@@ -68,10 +76,13 @@ export function MovieHeader({ movie }: { movie: Movie }) {
       if (!isAuthenticated || !user || !movie.id) return;
 
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+        if (!apiBaseUrl) {
+          console.error("API base URL is not configured");
+          return;
+        }
         console.log({ tmdbId: movie.id });
         await clientApi.progress.saveProgress(
-          baseUrl,
+          apiBaseUrl,
           user.id,
           movie.id.toString(),
           currentTime
@@ -80,7 +91,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
         console.error("Error saving playback progress:", error);
       }
     },
-    [isAuthenticated, user, movie.id]
+    [isAuthenticated, user, movie.id, apiBaseUrl]
   );
 
   // Handle deleting playback progress
@@ -88,9 +99,12 @@ export function MovieHeader({ movie }: { movie: Movie }) {
     if (!isAuthenticated || !user || !movie.id) return;
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      if (!apiBaseUrl) {
+        console.error("API base URL is not configured");
+        return;
+      }
       await clientApi.progress.deleteProgress(
-        baseUrl,
+        apiBaseUrl,
         user.id,
         movie.id.toString()
       );
@@ -100,7 +114,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
       console.error("Error deleting playback progress:", error);
       toast.error("Failed to reset playback progress");
     }
-  }, [isAuthenticated, user, movie.tmdbId]);
+  }, [isAuthenticated, user, movie.id, apiBaseUrl]);
 
   // Handle play button click
   const handlePlayClick = useCallback(() => {
@@ -252,14 +266,15 @@ export function MovieHeader({ movie }: { movie: Movie }) {
 
       {/* HLS Player Dialog */}
       <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
-        <DialogContent className="max-w-6xl p-0 bg-black border-gray-800">
-          <VisuallyHidden>
-            <DialogTitle></DialogTitle>
-          </VisuallyHidden>
+        <DialogContent 
+          className="max-w-6xl p-0 bg-black border-gray-800"
+          aria-describedby={undefined}
+        >
+          <DialogTitle className="sr-only">
+            {movie.title} - Video Player
+          </DialogTitle>
           <HLSPlayer
-            src={new URL(
-              process.env.NEXT_PUBLIC_API_URL + movie.playPath
-            ).toString()}
+            src={apiBaseUrl ? new URL(apiBaseUrl + movie.playPath).toString() : ""}
             title={movie.title}
             poster={
               movie.backdropPath

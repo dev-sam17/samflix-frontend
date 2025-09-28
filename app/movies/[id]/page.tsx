@@ -22,6 +22,7 @@ import { TranscodeStatus } from "@/lib/types";
 import { useApiWithContext } from "@/hooks/use-api-with-context";
 import { useApi } from "@/hooks/use-api";
 import { useState } from "react";
+import { MovieHeader } from "./MovieHeader";
 
 function LoadingSkeleton() {
   return (
@@ -243,149 +244,55 @@ export default function MovieDetailPage() {
   }
 
   return (
-    <div className="container mx-auto min-h-screen bg-black text-white">
-      {/* Hero Section */}
-      <div className="relative h-[35vh] overflow-hidden">
-        <Image
-          src={api.utils.getTmdbImageUrl(movie.backdropPath || "", "w780")}
-          alt={movie.title}
-          fill
-          className="object-cover"
-          priority
-          quality={75}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-transparent" />
-
-        {/* Back Button */}
-        <div className="absolute top-6 left-6 z-20">
-          <Link href="/movies">
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-black/50 border-gray-600 text-white hover:bg-black/70 backdrop-blur-sm"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Movies
-            </Button>
-          </Link>
-        </div>
+    <div className="min-h-screen bg-black text-white">
+      {/* Back Button */}
+      <div className="absolute top-6 left-6 z-30">
+        <Link href="/movies">
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-black/50 border-gray-600 text-white hover:bg-black/70 backdrop-blur-sm"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Movies
+          </Button>
+        </Link>
       </div>
 
-      <div className="container mx-auto px-4 -mt-20 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Poster */}
-          <div className="lg:col-span-1">
-            <Card className="group bg-gray-900/90 border-gray-700 hover:border-red-500/50 transition-all duration-300 backdrop-blur-sm shadow-2xl">
-              <CardContent className="p-2">
-                <div className="relative aspect-[2/3] overflow-hidden rounded-md">
-                  <Image
-                    src={api.utils.getTmdbImageUrl(
-                      movie.posterPath || "",
-                      "w300"
-                    )}
-                    alt={movie.title}
-                    fill
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    quality={80}
-                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 25vw, 20vw"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+      {/* Movie Header with Play Functionality */}
+      <MovieHeader movie={movie} />
 
-          {/* Details */}
-          <div className="lg:col-span-3 space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-center align-bottom gap-2 text-sm text-gray-300 flex-wrap">
-                <Badge className="bg-red-600 text-white border-red-600 text-xs">
-                  <Film className="w-3 h-3 mr-1" />
-                  Movie
-                </Badge>
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  <span>{movie.year}</span>
-                </div>
-                {movie.runtime && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>
-                      {Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m
-                    </span>
-                  </div>
-                )}
-                {movie.rating && movie.rating > 0 && (
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    <span>{movie.rating.toFixed(1)}</span>
-                  </div>
-                )}
+      {/* Movie Stats Section */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex gap-3 flex-wrap mb-8">
+          {movie.quality && (
+            <div className="bg-gray-900/60 border border-gray-700 rounded-lg px-4 py-3 text-center hover:border-red-500/30 transition-colors">
+              <div className="text-sm font-semibold text-red-400">
+                {movie.quality}
               </div>
-
-              <h1 className="text-3xl lg:text-4xl font-bold text-white leading-tight">
-                {movie.title}
-              </h1>
-
-              <div className="flex gap-1 flex-wrap">
-                {Array.isArray(movie.genres) &&
-                  movie.genres.slice(0, 4).map((genre: string) => (
-                    <Badge
-                      key={genre}
-                      variant="outline"
-                      className="border-gray-600 text-gray-300 hover:border-red-500 hover:text-red-400 transition-colors text-xs px-2 py-1"
-                    >
-                      {genre}
-                    </Badge>
-                  ))}
-              </div>
-
-              <p className="text-gray-300 text-base leading-relaxed line-clamp-3">
-                {movie.overview}
-              </p>
-
-              <div className="flex gap-3">
-                <Button className="bg-red-600 hover:bg-red-700 px-6">
-                  <Play className="w-4 h-4 mr-2" />
-                  Play
-                </Button>
-              </div>
+              <div className="text-xs text-gray-400">Quality</div>
             </div>
-
-            {/* Movie Stats - Compact */}
-            <div className="flex gap-3 flex-wrap">
-              {movie.quality && (
-                <div className="bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2 text-center hover:border-red-500/30 transition-colors">
-                  <div className="text-sm font-semibold text-red-400">
-                    {movie.quality}
-                  </div>
-                  <div className="text-xs text-gray-400">Quality</div>
-                </div>
-              )}
-              {movie.rip && (
-                <div className="bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2 text-center hover:border-red-500/30 transition-colors">
-                  <div className="text-sm font-semibold text-red-400">
-                    {movie.rip}
-                  </div>
-                  <div className="text-xs text-gray-400">Source</div>
-                </div>
-              )}
-              {movie.sound && (
-                <div className="bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2 text-center hover:border-red-500/30 transition-colors">
-                  <div className="text-sm font-semibold text-red-400">
-                    {movie.sound}
-                  </div>
-                  <div className="text-xs text-gray-400">Audio</div>
-                </div>
-              )}
+          )}
+          {movie.rip && (
+            <div className="bg-gray-900/60 border border-gray-700 rounded-lg px-4 py-3 text-center hover:border-red-500/30 transition-colors">
+              <div className="text-sm font-semibold text-red-400">
+                {movie.rip}
+              </div>
+              <div className="text-xs text-gray-400">Source</div>
             </div>
-          </div>
+          )}
+          {movie.sound && (
+            <div className="bg-gray-900/60 border border-gray-700 rounded-lg px-4 py-3 text-center hover:border-red-500/30 transition-colors">
+              <div className="text-sm font-semibold text-red-400">
+                {movie.sound}
+              </div>
+              <div className="text-xs text-gray-400">Audio</div>
+            </div>
+          )}
         </div>
 
         {/* Recommendations Section */}
-        <div className="mt-8">
-          <RecommendationCarousel movie={movie} />
-        </div>
+        <RecommendationCarousel movie={movie} />
       </div>
     </div>
   );

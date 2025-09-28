@@ -393,7 +393,13 @@ export function HLSPlayer({
       styleTag.id = "fullscreen-dialog-styles";
       styleTag.innerHTML = `
         [data-radix-popper-content-wrapper] {
-          z-index: 10000 !important;
+          z-index: 10001 !important;
+        }
+        [data-radix-dropdown-menu-content] {
+          z-index: 10001 !important;
+        }
+        .hls-fullscreen-active [data-radix-popper-content-wrapper] {
+          z-index: 10001 !important;
         }
       `;
       document.head.appendChild(styleTag);
@@ -786,6 +792,9 @@ export function HLSPlayer({
       onMouseLeave={hideControls}
       onTouchStart={handleContainerInteraction}
       onClick={handleContainerInteraction}
+      role="application"
+      aria-label={title ? `Video player for ${title}` : "Video player"}
+      tabIndex={0}
     >
       {/* Video Element */}
       <video
@@ -803,6 +812,8 @@ export function HLSPlayer({
         }}
         poster={poster}
         playsInline
+        aria-label={title ? `Video: ${title}` : "Video"}
+        tabIndex={-1}
       />
 
       {/* Back Button */}
@@ -816,6 +827,7 @@ export function HLSPlayer({
             isControlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
           )}
           onClick={onBack}
+          aria-label="Go back"
         >
           <ArrowLeft className={cn("h-6 w-6", isMobile ? "h-7 w-7" : "")} />
         </Button>
@@ -853,6 +865,40 @@ export function HLSPlayer({
         </div>
       )}
 
+      {/* Pause Overlay - Movie Details */}
+      {!isPlaying && !isBuffering && (
+        <div className="absolute inset-0 flex items-center justify-center z-40 bg-black/50">
+          <div className="text-center text-white space-y-4 max-w-2xl px-8">
+            {title && (
+              <h1 className={cn(
+                "font-bold text-white drop-shadow-lg",
+                isMobile ? "text-2xl" : "text-4xl"
+              )}>
+                {title}
+              </h1>
+            )}
+            <div className="flex items-center justify-center space-x-4 text-sm text-gray-300">
+              <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+              {duration > 0 && (
+                <span>{Math.round((currentTime / duration) * 100)}% watched</span>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "rounded-full bg-white/10 hover:bg-white/20 text-white",
+                isMobile ? "w-16 h-16" : "w-20 h-20"
+              )}
+              onClick={togglePlay}
+              aria-label="Play video"
+            >
+              <Play className={cn("h-8 w-8", isMobile ? "h-6 w-6" : "")} />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Controls Overlay */}
       <div
         className={cn(
@@ -860,24 +906,23 @@ export function HLSPlayer({
           isControlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
       >
-        {/* Center Play/Pause Button */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "rounded-full bg-white/10 hover:bg-white/20 text-white",
-              isMobile ? "w-16 h-16" : "w-20 h-20"
-            )}
-            onClick={togglePlay}
-          >
-            {isPlaying ? (
+        {/* Center Play/Pause Button - Only show when playing */}
+        {isPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "rounded-full bg-white/10 hover:bg-white/20 text-white",
+                isMobile ? "w-16 h-16" : "w-20 h-20"
+              )}
+              onClick={togglePlay}
+              aria-label="Pause video"
+            >
               <Pause className={cn("h-8 w-8", isMobile ? "h-6 w-6" : "")} />
-            ) : (
-              <Play className={cn("h-8 w-8", isMobile ? "h-6 w-6" : "")} />
-            )}
-          </Button>
-        </div>
+            </Button>
+          </div>
+        )}
 
         {/* Bottom Controls */}
         <div
@@ -1015,13 +1060,17 @@ export function HLSPlayer({
                         "text-white hover:bg-white/20",
                         isMobile ? "w-12 h-12" : "w-10 h-10"
                       )}
+                      aria-label="Audio track selection"
                     >
                       <Languages
                         className={cn("h-5 w-5", isMobile ? "h-6 w-6" : "")}
                       />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-gray-900 border-gray-700">
+                  <DropdownMenuContent 
+                    className="bg-gray-900 border-gray-700 z-[10001]"
+                    sideOffset={5}
+                  >
                     <div className="p-2">
                       <h3 className="text-white font-semibold mb-2">
                         Audio Tracks
@@ -1037,6 +1086,11 @@ export function HLSPlayer({
                             {track.default && (
                               <Badge variant="secondary" className="text-xs">
                                 Default
+                              </Badge>
+                            )}
+                            {selectedAudioTrack === track.language && (
+                              <Badge className="bg-red-600 text-white text-xs">
+                                Active
                               </Badge>
                             )}
                           </div>
@@ -1056,15 +1110,20 @@ export function HLSPlayer({
                       size="icon"
                       className={cn(
                         "text-white hover:bg-white/20",
-                        isMobile ? "w-12 h-12" : "w-10 h-10"
+                        isMobile ? "w-12 h-12" : "w-10 h-10",
+                        isSubtitlesEnabled ? "bg-red-600/30" : ""
                       )}
+                      aria-label="Subtitle settings"
                     >
                       <Subtitles
                         className={cn("h-5 w-5", isMobile ? "h-6 w-6" : "")}
                       />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-gray-900 border-gray-700">
+                  <DropdownMenuContent 
+                    className="bg-gray-900 border-gray-700 z-[10001]"
+                    sideOffset={5}
+                  >
                     <div className="p-2">
                       <h3 className="text-white font-semibold mb-2">
                         Subtitles
@@ -1073,9 +1132,14 @@ export function HLSPlayer({
                         className="text-white hover:bg-white/10"
                         onClick={toggleSubtitles}
                       >
-                        {isSubtitlesEnabled
-                          ? "Hide Subtitles"
-                          : "Show Subtitles"}
+                        <div className="flex items-center space-x-2">
+                          <span>{isSubtitlesEnabled ? "Hide Subtitles" : "Show Subtitles"}</span>
+                          {isSubtitlesEnabled && (
+                            <Badge className="bg-red-600 text-white text-xs">
+                              ON
+                            </Badge>
+                          )}
+                        </div>
                       </DropdownMenuItem>
                       {availableSubtitleTracks.map((track, index) => (
                         <DropdownMenuItem
@@ -1083,7 +1147,14 @@ export function HLSPlayer({
                           className="text-white hover:bg-white/10"
                           onClick={() => handleSubtitleTrackSelect(track)}
                         >
-                          {track.label}
+                          <div className="flex items-center space-x-2">
+                            <span>{track.label}</span>
+                            {selectedSubtitleTrack === track.language && isSubtitlesEnabled && (
+                              <Badge className="bg-red-600 text-white text-xs">
+                                Active
+                              </Badge>
+                            )}
+                          </div>
                         </DropdownMenuItem>
                       ))}
                     </div>
@@ -1102,17 +1173,34 @@ export function HLSPlayer({
                         "text-white hover:bg-white/20",
                         isMobile ? "w-12 h-12" : "w-10 h-10"
                       )}
+                      aria-label="Video quality settings"
                     >
                       <Settings
                         className={cn("h-5 w-5", isMobile ? "h-6 w-6" : "")}
                       />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-gray-900 border-gray-700">
+                  <DropdownMenuContent 
+                    className="bg-gray-900 border-gray-700 z-[10001]"
+                    sideOffset={5}
+                  >
                     <div className="p-2">
                       <h3 className="text-white font-semibold mb-2">
                         Quality Levels
                       </h3>
+                      <DropdownMenuItem
+                        className="text-white hover:bg-white/10"
+                        onClick={() => handleQualityLevelSelect(-1)}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span>Auto</span>
+                          {currentQualityLevel === -1 && (
+                            <Badge className="bg-red-600 text-white text-xs">
+                              Active
+                            </Badge>
+                          )}
+                        </div>
+                      </DropdownMenuItem>
                       {availableQualityLevels.map((level, index) => (
                         <DropdownMenuItem
                           key={index}
@@ -1121,17 +1209,14 @@ export function HLSPlayer({
                         >
                           <div className="flex items-center space-x-2">
                             <span>{level.name}</span>
+                            {currentQualityLevel === level.level && (
+                              <Badge className="bg-red-600 text-white text-xs">
+                                Active
+                              </Badge>
+                            )}
                           </div>
                         </DropdownMenuItem>
                       ))}
-                      <DropdownMenuItem
-                        className="text-white hover:bg-white/10"
-                        onClick={() => handleQualityLevelSelect(-1)}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <span>Auto</span>
-                        </div>
-                      </DropdownMenuItem>
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1146,6 +1231,7 @@ export function HLSPlayer({
                   isMobile ? "w-12 h-12" : "w-10 h-10"
                 )}
                 onClick={toggleFullscreen}
+                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               >
                 {isFullscreen ? (
                   <Minimize
