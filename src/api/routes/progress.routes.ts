@@ -32,12 +32,7 @@ router.post('/', validateSaveProgress, progressController.saveProgress);
  */
 router.get('/:clerkId/:tmdbId', validateProgressParams, progressController.getProgress);
 
-/**
- * @route GET /api/progress/:clerkId
- * @desc Get all progress entries for a specific user
- * @returns Array of { tmdbId: string, currentTime: number, updatedAt: string }
- */
-router.get('/:clerkId', validateClerkIdParam, progressController.getAllProgress);
+// Note: More specific routes must come BEFORE generic routes to avoid conflicts
 
 /**
  * @route DELETE /api/progress/:clerkId/:tmdbId
@@ -83,6 +78,15 @@ router.get('/series/:clerkId', validateClerkIdParam, progressController.getAllSe
  * @returns 204 No Content
  */
 router.delete('/series/:clerkId/:seriesId', validateSeriesParams, progressController.deleteSeriesProgress);
+
+// Movie Progress Routes (must come AFTER series routes to avoid conflicts)
+
+/**
+ * @route GET /api/progress/:clerkId
+ * @desc Get all movie progress entries for a specific user
+ * @returns Array of { tmdbId: string, currentTime: number, updatedAt: string }
+ */
+router.get('/:clerkId', validateClerkIdParam, progressController.getAllProgress);
 
 // Cache Management Routes
 
