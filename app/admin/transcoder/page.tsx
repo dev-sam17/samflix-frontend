@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search,
   RefreshCw,
@@ -34,6 +35,8 @@ import {
   AlertTriangle,
   Activity,
   Loader2,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import api from "@/lib/api";
 import { TranscodeStatus, Movie, TvSeries, Episode } from "@/lib/types";
@@ -94,6 +97,9 @@ function MovieTable() {
   const [statusFilter, setStatusFilter] = useState<TranscodeStatus | "ALL">(
     "ALL"
   );
+  const [selectedMovies, setSelectedMovies] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<TranscodeStatus | "">(""); 
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   // Fetch movies using the existing API
   const {
@@ -173,6 +179,75 @@ function MovieTable() {
     }
   };
 
+  // Bulk update functions
+  const handleSelectMovie = (movieId: string, checked: boolean) => {
+    setSelectedMovies(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(movieId);
+      } else {
+        newSet.delete(movieId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllMovies = (checked: boolean) => {
+    if (checked) {
+      setSelectedMovies(new Set(filteredMovies.map(movie => movie.id)));
+    } else {
+      setSelectedMovies(new Set());
+    }
+  };
+
+  const handleBulkUpdate = async () => {
+    if (selectedMovies.size === 0) {
+      toast.error("Please select movies to update");
+      return;
+    }
+    if (!bulkStatus) {
+      toast.error("Please select a status for bulk update");
+      return;
+    }
+
+    setIsBulkUpdating(true);
+    const movieIds = Array.from(selectedMovies);
+    
+    try {
+      // Use Promise.all for concurrent updates
+      const updatePromises = movieIds.map(movieId => 
+        updateStatus({ id: movieId, status: bulkStatus })
+      );
+
+      const results = await Promise.all(updatePromises);
+      
+      // Update local state for all updated movies
+      setMovies(prevMovies =>
+        prevMovies.map(movie => {
+          if (selectedMovies.has(movie.id)) {
+            return {
+              ...movie,
+              transcodeStatus: bulkStatus,
+            };
+          }
+          return movie;
+        })
+      );
+
+      // Clear selections
+      setSelectedMovies(new Set());
+      setBulkStatus("");
+
+      toast.success(
+        `Successfully updated ${results.length} movies to ${bulkStatus} status`
+      );
+    } catch (error) {
+      toast.error("Failed to update some movies. Please try again.");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
   // Filter movies based on search query and status filter
   const filteredMovies = movies.filter((movie) => {
     const matchesSearch =
@@ -229,12 +304,61 @@ function MovieTable() {
         </Button>
       </div>
 
+      {/* Bulk Actions */}
+      {selectedMovies.size > 0 && (
+        <div className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <span className="text-sm text-gray-300">
+            {selectedMovies.size} movie{selectedMovies.size !== 1 ? 's' : ''} selected
+          </span>
+          <Select value={bulkStatus} onValueChange={(value) => setBulkStatus(value as TranscodeStatus)}>
+            <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-700">
+              <SelectItem value={TranscodeStatus.PENDING}>Pending</SelectItem>
+              <SelectItem value={TranscodeStatus.IN_PROGRESS}>In Progress</SelectItem>
+              <SelectItem value={TranscodeStatus.QUEUED}>Queued</SelectItem>
+              <SelectItem value={TranscodeStatus.COMPLETED}>Completed</SelectItem>
+              <SelectItem value={TranscodeStatus.FAILED}>Failed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            onClick={handleBulkUpdate}
+            disabled={isBulkUpdating || !bulkStatus}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {isBulkUpdating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              `Update ${selectedMovies.size} Movie${selectedMovies.size !== 1 ? 's' : ''}`
+            )}
+          </Button>
+          <Button 
+            onClick={() => setSelectedMovies(new Set())}
+            variant="outline"
+            size="sm"
+          >
+            Clear Selection
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center py-8">Loading movies...</div>
       ) : (
         <Table className="border border-gray-700 rounded-md overflow-hidden">
           <TableHeader className="bg-gray-800">
             <TableRow className="hover:bg-gray-800/80 border-b border-gray-700">
+              <TableHead className="text-white w-12">
+                <Checkbox
+                  checked={selectedMovies.size === filteredMovies.length && filteredMovies.length > 0}
+                  onCheckedChange={handleSelectAllMovies}
+                  aria-label="Select all movies"
+                />
+              </TableHead>
               <TableHead className="text-white">Title</TableHead>
               <TableHead className="text-white">Current Status</TableHead>
               <TableHead className="text-white">New Status</TableHead>
@@ -244,7 +368,7 @@ function MovieTable() {
           <TableBody>
             {filteredMovies.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">
+                <TableCell colSpan={5} className="text-center">
                   No movies found
                 </TableCell>
               </TableRow>
@@ -254,6 +378,13 @@ function MovieTable() {
                   key={movie.id}
                   className="hover:bg-gray-800/50 border-b border-gray-700"
                 >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedMovies.has(movie.id)}
+                      onCheckedChange={(checked) => handleSelectMovie(movie.id, checked as boolean)}
+                      aria-label={`Select ${movie.title}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{movie.title}</TableCell>
                   <TableCell>
                     <StatusBadge status={movie.transcodeStatus} />
@@ -329,6 +460,9 @@ function SeriesTable() {
   const [statusFilter, setStatusFilter] = useState<TranscodeStatus | "ALL">(
     "ALL"
   );
+  const [selectedSeries, setSelectedSeries] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<TranscodeStatus | "">(""); 
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   // Fetch series using the existing API
   const {
@@ -412,6 +546,80 @@ function SeriesTable() {
     }
   };
 
+  // Bulk update functions for series
+  const handleSelectSeries = (seriesId: string, checked: boolean) => {
+    setSelectedSeries(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(seriesId);
+      } else {
+        newSet.delete(seriesId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllSeries = (checked: boolean) => {
+    if (checked) {
+      setSelectedSeries(new Set(filteredSeries.map(series => series.id)));
+    } else {
+      setSelectedSeries(new Set());
+    }
+  };
+
+  const handleBulkUpdateSeries = async () => {
+    if (selectedSeries.size === 0) {
+      toast.error("Please select series to update");
+      return;
+    }
+    if (!bulkStatus) {
+      toast.error("Please select a status for bulk update");
+      return;
+    }
+
+    setIsBulkUpdating(true);
+    const seriesIds = Array.from(selectedSeries);
+    
+    try {
+      // Use Promise.all for concurrent updates
+      const updatePromises = seriesIds.map(seriesId => 
+        updateStatus({ id: seriesId, status: bulkStatus })
+      );
+
+      const results = await Promise.all(updatePromises);
+      
+      // Update local state for all updated series
+      setSeries(prevSeries =>
+        prevSeries.map(seriesItem => {
+          if (selectedSeries.has(seriesItem.id)) {
+            return {
+              ...seriesItem,
+              transcodeStatus: bulkStatus,
+            };
+          }
+          return seriesItem;
+        })
+      );
+
+      // Calculate total episodes updated
+      const totalEpisodes = results.reduce((sum, result) => 
+        sum + (result.data.updatedEpisodesCount || 0), 0
+      );
+
+      // Clear selections
+      setSelectedSeries(new Set());
+      setBulkStatus("");
+
+      toast.success(
+        `Successfully updated ${results.length} series to ${bulkStatus} status. Updated ${totalEpisodes} episodes total.`
+      );
+    } catch (error) {
+      toast.error("Failed to update some series. Please try again.");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
   // Filter series based on search query and status filter
   const filteredSeries = series.filter((seriesItem) => {
     const matchesSearch =
@@ -468,12 +676,61 @@ function SeriesTable() {
         </Button>
       </div>
 
+      {/* Bulk Actions for Series */}
+      {selectedSeries.size > 0 && (
+        <div className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <span className="text-sm text-gray-300">
+            {selectedSeries.size} series selected
+          </span>
+          <Select value={bulkStatus} onValueChange={(value) => setBulkStatus(value as TranscodeStatus)}>
+            <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-700">
+              <SelectItem value={TranscodeStatus.PENDING}>Pending</SelectItem>
+              <SelectItem value={TranscodeStatus.IN_PROGRESS}>In Progress</SelectItem>
+              <SelectItem value={TranscodeStatus.QUEUED}>Queued</SelectItem>
+              <SelectItem value={TranscodeStatus.COMPLETED}>Completed</SelectItem>
+              <SelectItem value={TranscodeStatus.FAILED}>Failed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            onClick={handleBulkUpdateSeries}
+            disabled={isBulkUpdating || !bulkStatus}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {isBulkUpdating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              `Update ${selectedSeries.size} Series`
+            )}
+          </Button>
+          <Button 
+            onClick={() => setSelectedSeries(new Set())}
+            variant="outline"
+            size="sm"
+          >
+            Clear Selection
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center py-8">Loading series...</div>
       ) : (
         <Table className="border border-gray-700 rounded-md overflow-hidden">
           <TableHeader className="bg-gray-800">
             <TableRow className="hover:bg-gray-800/80 border-b border-gray-700">
+              <TableHead className="text-white w-12">
+                <Checkbox
+                  checked={selectedSeries.size === filteredSeries.length && filteredSeries.length > 0}
+                  onCheckedChange={handleSelectAllSeries}
+                  aria-label="Select all series"
+                />
+              </TableHead>
               <TableHead className="text-white">Series Title</TableHead>
               <TableHead className="text-white">Current Status</TableHead>
               <TableHead className="text-white">New Status</TableHead>
@@ -483,7 +740,7 @@ function SeriesTable() {
           <TableBody>
             {filteredSeries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">
+                <TableCell colSpan={5} className="text-center">
                   No series found
                 </TableCell>
               </TableRow>
@@ -493,6 +750,13 @@ function SeriesTable() {
                   key={seriesItem.id}
                   className="hover:bg-gray-800/50 border-b border-gray-700"
                 >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedSeries.has(seriesItem.id)}
+                      onCheckedChange={(checked) => handleSelectSeries(seriesItem.id, checked as boolean)}
+                      aria-label={`Select ${seriesItem.title}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">
                     {seriesItem.title}
                   </TableCell>
