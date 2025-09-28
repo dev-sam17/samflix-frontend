@@ -3,11 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Tv, Star, Calendar, Clock, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Calendar, Tv } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import api from "@/lib/api";
+import { api } from "@/lib/api";
+import type { TvSeries } from "@/lib/types";
 import SeasonSection from "./seasonSection";
+import { SeriesProgressButton } from "./SeriesProgressButton";
 
 export default async function SeriesDetailPage({
   params,
@@ -130,12 +132,7 @@ export default async function SeriesDetailPage({
                 {series.overview}
               </p>
 
-              <div className="flex gap-4">
-                <Button size="lg" className="bg-red-600 hover:bg-red-700 w-full sm:w-auto">
-                  <Play className="w-5 h-5 mr-2" />
-                  Play Latest
-                </Button>
-              </div>
+              <SeriesProgressButton series={series} />
             </div>
 
             {/* Series Stats */}
@@ -145,7 +142,9 @@ export default async function SeriesDetailPage({
                   <div className="text-xl md:text-2xl font-bold text-red-400">
                     {seasons.length}
                   </div>
-                  <div className="text-xs md:text-sm text-gray-400">Seasons</div>
+                  <div className="text-xs md:text-sm text-gray-400">
+                    Seasons
+                  </div>
                 </CardContent>
               </Card>
               <Card className="bg-gray-900/50 border-gray-800 hover:border-red-500/30 transition-colors">
@@ -153,7 +152,9 @@ export default async function SeriesDetailPage({
                   <div className="text-xl md:text-2xl font-bold text-red-400">
                     {totalEpisodes}
                   </div>
-                  <div className="text-xs md:text-sm text-gray-400">Episodes</div>
+                  <div className="text-xs md:text-sm text-gray-400">
+                    Episodes
+                  </div>
                 </CardContent>
               </Card>
               <Card className="bg-gray-900/50 border-gray-800 hover:border-red-500/30 transition-colors">
@@ -163,7 +164,9 @@ export default async function SeriesDetailPage({
                       ? new Date(series.firstAirDate).getFullYear()
                       : "N/A"}
                   </div>
-                  <div className="text-xs md:text-sm text-gray-400">First Aired</div>
+                  <div className="text-xs md:text-sm text-gray-400">
+                    First Aired
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -193,7 +196,11 @@ export default async function SeriesDetailPage({
                 <h2 className="text-2xl font-bold text-white">Episodes</h2>
                 <div className="space-y-4">
                   {seasons.map((season) => (
-                    <SeasonSection key={season.seasonNumber} season={season} />
+                    <SeasonSection
+                      key={season.seasonNumber}
+                      season={season}
+                      seriesId={series.id}
+                    />
                   ))}
                 </div>
               </div>

@@ -684,7 +684,9 @@ export const clientApi = {
     },
 
     // Get Transcode Statistics
-    getStats: async (baseUrl: string): Promise<{
+    getStats: async (
+      baseUrl: string
+    ): Promise<{
       success: boolean;
       data: {
         pending: number;
@@ -817,13 +819,12 @@ export const clientApi = {
     getAllProgress: async (
       baseUrl: string,
       clerkId: string
-    ): Promise<Array<{ tmdbId: string; currentTime: number; updatedAt: string }>> => {
-      return apiRequest<Array<{ tmdbId: string; currentTime: number; updatedAt: string }>>(
-        `/api/progress/${clerkId}`,
-        {},
-        "no-store",
-        baseUrl
-      );
+    ): Promise<
+      Array<{ tmdbId: string; currentTime: number; updatedAt: string }>
+    > => {
+      return apiRequest<
+        Array<{ tmdbId: string; currentTime: number; updatedAt: string }>
+      >(`/api/progress/${clerkId}`, {}, "no-store", baseUrl);
     },
 
     // Delete progress
@@ -833,7 +834,131 @@ export const clientApi = {
       tmdbId: string
     ): Promise<boolean> => {
       const url = new URL(`/api/progress/${clerkId}/${tmdbId}`, baseUrl);
-      
+
+      const config: RequestInit = {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      };
+
+      try {
+        const response = await fetch(url, config);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new ApiError(
+            errorData.message || `HTTP error! status: ${response.status}`,
+            response.status,
+            errorData
+          );
+        }
+
+        // For 204 No Content, just return true (successful deletion)
+        return true;
+      } catch (error) {
+        if (error instanceof ApiError) {
+          throw error;
+        }
+        throw new ApiError("Network error occurred", 0, error);
+      }
+    },
+
+    // Series Progress Functions
+    // Save series progress (invalidates previous)
+    saveSeriesProgress: async (
+      baseUrl: string,
+      clerkId: string,
+      seriesId: string,
+      tmdbId: string,
+      currentTime: number
+    ): Promise<boolean> => {
+      return apiRequest<boolean>(
+        `/api/progress/series`,
+        {
+          method: "POST",
+          body: JSON.stringify({ clerkId, seriesId, tmdbId, currentTime }),
+        },
+        "no-store",
+        baseUrl
+      );
+    },
+
+    // Get current series progress (latest episode)
+    getSeriesProgress: async (
+      baseUrl: string,
+      clerkId: string,
+      seriesId: string
+    ): Promise<{
+      tmdbId: string;
+      currentTime: number;
+      updatedAt: string;
+      episodeTitle?: string;
+      seasonNumber?: number;
+      episodeNumber?: number;
+    } | null> => {
+      try {
+        return await apiRequest<{
+          tmdbId: string;
+          currentTime: number;
+          updatedAt: string;
+          episodeTitle?: string;
+          seasonNumber?: number;
+          episodeNumber?: number;
+        }>(
+          `/api/progress/series/${clerkId}/${seriesId}`,
+          {},
+          "no-store",
+          baseUrl
+        );
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+          return null;
+        }
+        throw error;
+      }
+    },
+
+    // Get all series progress for user
+    getAllSeriesProgress: async (
+      baseUrl: string,
+      clerkId: string
+    ): Promise<
+      Array<{
+        seriesId: string;
+        tmdbId: string;
+        currentTime: number;
+        updatedAt: string;
+        episodeTitle?: string;
+        seasonNumber?: number;
+        episodeNumber?: number;
+      }>
+    > => {
+      return apiRequest<
+        Array<{
+          seriesId: string;
+          tmdbId: string;
+          currentTime: number;
+          updatedAt: string;
+          episodeTitle?: string;
+          seasonNumber?: number;
+          episodeNumber?: number;
+        }>
+      >(`/api/progress/series/${clerkId}`, {}, "no-store", baseUrl);
+    },
+
+    // Delete all progress for a series
+    deleteSeriesProgress: async (
+      baseUrl: string,
+      clerkId: string,
+      seriesId: string
+    ): Promise<boolean> => {
+      const url = new URL(
+        `/api/progress/series/${clerkId}/${seriesId}`,
+        baseUrl
+      );
+
       const config: RequestInit = {
         method: "DELETE",
         headers: {
@@ -875,12 +1000,7 @@ export const clientApi = {
       lastScanTime: string | null;
       cached: boolean;
     }> => {
-      return apiRequest(
-        "/api/storage/stats",
-        {},
-        "no-store",
-        API_BASE_URL
-      );
+      return apiRequest("/api/storage/stats", {}, "no-store", API_BASE_URL);
     },
 
     // Get scan status
@@ -912,7 +1032,9 @@ export const clientApi = {
     },
 
     // Update total disk space
-    updateDiskSpace: async (totalDiskSpace: string): Promise<{
+    updateDiskSpace: async (
+      totalDiskSpace: string
+    ): Promise<{
       message: string;
       totalDiskSpace: string;
     }> => {

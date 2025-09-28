@@ -1,26 +1,56 @@
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, Calendar, Clock } from "lucide-react";
+import { Play, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HLSPlayer } from "@/components/hls-player";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { TranscodeStatus } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
-import { SignInButton } from "@clerk/nextjs";
+import { SignInButton, useUser } from "@clerk/nextjs";
+import { useApiUrl } from "@/contexts/api-url-context";
+import { clientApi } from "@/lib/api";
 
 export function EpisodeCard({
   episode,
   seasonNumber,
+  seriesId,
 }: {
   episode: any;
   seasonNumber: number;
+  seriesId: string;
 }) {
   const [isPlayerOpen, setIsPlayerOpen] = React.useState(false);
   const { isAuthenticated } = useAuth();
+  const { user } = useUser();
+  const { apiBaseUrl } = useApiUrl();
+
+  // Handle saving series progress
+  const handleTimeUpdate = useCallback(
+    async (currentTime: number) => {
+      if (!isAuthenticated || !user || !episode.id || !seriesId) return;
+
+      try {
+        if (!apiBaseUrl) {
+          console.error("API base URL is not configured");
+          return;
+        }
+        await clientApi.progress.saveSeriesProgress(
+          apiBaseUrl,
+          user.id,
+          seriesId,
+          episode.id.toString(),
+          currentTime
+        );
+      } catch (error) {
+        console.error("Error saving series progress:", error);
+      }
+    },
+    [isAuthenticated, user, episode.id, seriesId, apiBaseUrl]
+  );
 
   return (
     <>
@@ -39,11 +69,7 @@ export function EpisodeCard({
           </div>
 
           {/* Episode Info */}
-          <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
-            <div className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {episode.runtime}m
-            </div>
+          <div className="flex items-center justify-end text-xs text-gray-400 mb-2">
             <Badge
               variant="outline"
               className="border-gray-600/50 text-gray-400 text-xs px-1 py-0"
@@ -106,19 +132,22 @@ export function EpisodeCard({
       <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
         <DialogContent className="max-w-6xl p-0 bg-black border-gray-800">
           <VisuallyHidden>
-            <DialogTitle className="text-2xl font-bold text-white"></DialogTitle>
+            <DialogTitle>
+              {episode.title} - S{seasonNumber}E{episode.episodeNumber}
+            </DialogTitle>
           </VisuallyHidden>
           <HLSPlayer
-            src={new URL(
-              process.env.NEXT_PUBLIC_API_URL + episode.playPath
-            ).toString()}
-            title={`S${seasonNumber
-              .toString()
-              .padStart(2, "0")}E${episode.episodeNumber
-              .toString()
-              .padStart(2, "0")} - ${episode.title}`}
+            src={
+              apiBaseUrl && episode.playPath
+                ? new URL(apiBaseUrl + episode.playPath).toString()
+                : ""
+            }
+            title={`${episode.title} - S${seasonNumber}E${episode.episodeNumber}`}
             onBack={() => setIsPlayerOpen(false)}
             autoPlay={true}
+            tmdbId={episode.id?.toString()}
+            clerkId={user?.id}
+            onTimeUpdate={handleTimeUpdate}
             audioTracks={[
               {
                 kind: "audio",

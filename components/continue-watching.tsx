@@ -3,37 +3,65 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Clock, MoreHorizontal, Trash2 } from "lucide-react";
+import { Play, Clock, MoreHorizontal, Trash2, Film, Tv, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { api, clientApi } from "@/lib/api";
 import { useApiUrl } from "@/contexts/api-url-context";
 import { useUser } from "@clerk/nextjs";
-import { type Movie } from "@/lib/types";
+import { type Movie, type TvSeries, type Episode } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
-type ProgressItem = {
+type MovieProgressItem = {
   tmdbId: string;
   currentTime: number;
   updatedAt: string;
-};
-
-type ContinueWatchingItem = ProgressItem & {
+  type: 'movie';
   movie: Movie;
 };
+
+type SeriesProgressItem = {
+  seriesId: string;
+  tmdbId: string;
+  currentTime: number;
+  updatedAt: string;
+  episodeTitle?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+  type: 'series';
+  series: TvSeries;
+  episode?: Episode;
+};
+
+type ContinueWatchingItem = MovieProgressItem | SeriesProgressItem;
 
 export function ContinueWatching() {
   const [items, setItems] = useState<ContinueWatchingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const { user, isSignedIn } = useUser();
   const { apiBaseUrl } = useApiUrl();
+
+  // Responsive items per page
+  const itemsPerPage = 6; // Show 6 items at a time
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  const currentItems = items.slice(currentIndex * itemsPerPage, (currentIndex + 1) * itemsPerPage);
+
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev + 1) % totalPages);
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + totalPages) % totalPages);
+  };
 
   useEffect(() => {
     const fetchContinueWatching = async () => {
@@ -44,26 +72,43 @@ export function ContinueWatching() {
 
       try {
         setIsLoading(true);
-        // Fetch all progress items for the user
-        const progressItems = await clientApi.progress.getAllProgress(
-          apiBaseUrl,
-          user.id
-        );
+        
+        // Fetch movie progress
+        const movieProgress = await clientApi.progress.getAllProgress(apiBaseUrl, user.id).catch((error) => {
+          console.error("Error fetching movie progress:", error);
+          return [];
+        });
 
-        if (progressItems.length === 0) {
+        // Try to fetch series progress (may not be implemented yet)
+        let seriesProgress: any[] = [];
+        try {
+          if (clientApi.progress.getAllSeriesProgress) {
+            seriesProgress = await clientApi.progress.getAllSeriesProgress(apiBaseUrl, user.id);
+          }
+        } catch (error) {
+          console.error("Series progress API not available or failed:", error);
+          seriesProgress = [];
+        }
+
+        // Ensure both are arrays
+        const safeMovieProgress = Array.isArray(movieProgress) ? movieProgress : [];
+        const safeSeriesProgress = Array.isArray(seriesProgress) ? seriesProgress : [];
+
+        if (safeMovieProgress.length === 0 && safeSeriesProgress.length === 0) {
           setIsLoading(false);
           return;
         }
 
-        // Fetch movie details for each progress item
-        const itemsWithDetails = await Promise.all(
-          progressItems.map(async (item) => {
+        // Process movie progress items
+        const movieItems = await Promise.all(
+          safeMovieProgress.map(async (item) => {
             try {
-              const movie = await clientApi.movies.getById(
-                item.tmdbId,
-                apiBaseUrl
-              );
-              return { ...item, movie } as ContinueWatchingItem;
+              const movie = await clientApi.movies.getById(item.tmdbId, apiBaseUrl);
+              return {
+                ...item,
+                type: 'movie' as const,
+                movie
+              } as MovieProgressItem;
             } catch (error) {
               console.error(`Error fetching movie ${item.tmdbId}:`, error);
               return null;
@@ -71,15 +116,36 @@ export function ContinueWatching() {
           })
         );
 
-        // Filter out items without movie details and sort by updatedAt (most recent first)
-        const validItems = itemsWithDetails
+        // Process series progress items
+        const seriesItems = await Promise.all(
+          safeSeriesProgress.map(async (item) => {
+            try {
+              const series = await clientApi.series.getById(item.seriesId, apiBaseUrl);
+              // Find the episode in the series
+              const episode = series.episodes.find(ep => ep.id.toString() === item.tmdbId);
+              
+              return {
+                ...item,
+                type: 'series' as const,
+                series,
+                episode
+              } as SeriesProgressItem;
+            } catch (error) {
+              console.error(`Error fetching series ${item.seriesId}:`, error);
+              return null;
+            }
+          })
+        );
+
+        // Combine and filter out null items, then sort by updatedAt (most recent first)
+        const allItems = [...movieItems, ...seriesItems]
           .filter((item): item is ContinueWatchingItem => item !== null)
           .sort(
             (a, b) =>
               new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           );
 
-        setItems(validItems);
+        setItems(allItems);
       } catch (error) {
         console.error("Error fetching continue watching data:", error);
       } finally {
@@ -90,15 +156,26 @@ export function ContinueWatching() {
     fetchContinueWatching();
   }, [isSignedIn, user, apiBaseUrl]);
 
-  const handleDeleteProgress = async (tmdbId: string) => {
+  const handleDeleteProgress = async (item: ContinueWatchingItem) => {
     if (!user || !apiBaseUrl) return;
 
     try {
-      await clientApi.progress.deleteProgress(apiBaseUrl, user.id, tmdbId);
+      if (item.type === 'movie') {
+        await clientApi.progress.deleteProgress(apiBaseUrl, user.id, item.tmdbId);
+      } else {
+        await clientApi.progress.deleteSeriesProgress(apiBaseUrl, user.id, item.seriesId);
+      }
 
       // Remove the item from the local state
       setItems((prevItems) =>
-        prevItems.filter((item) => item.tmdbId !== tmdbId)
+        prevItems.filter((prevItem) => {
+          if (item.type === 'movie' && prevItem.type === 'movie') {
+            return prevItem.tmdbId !== item.tmdbId;
+          } else if (item.type === 'series' && prevItem.type === 'series') {
+            return prevItem.seriesId !== item.seriesId;
+          }
+          return true;
+        })
       );
 
       toast.success("Progress deleted successfully");
@@ -117,6 +194,28 @@ export function ContinueWatching() {
     <section className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Continue Watching</h2>
+        {!isLoading && items.length > itemsPerPage && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={prevSlide}
+              disabled={currentIndex === 0}
+              className="border-gray-600 text-gray-300 hover:bg-white/10 disabled:opacity-50"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={nextSlide}
+              disabled={currentIndex === totalPages - 1}
+              className="border-gray-600 text-gray-300 hover:bg-white/10 disabled:opacity-50"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -130,14 +229,31 @@ export function ContinueWatching() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-          {items.map((item) => (
-            <ContinueWatchingCard
-              key={item.tmdbId}
-              item={item}
-              onDelete={() => handleDeleteProgress(item.tmdbId)}
-            />
-          ))}
+        <div className="relative">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 transition-all duration-300">
+            {currentItems.map((item) => (
+              <ContinueWatchingCard
+                key={item.type === 'movie' ? item.tmdbId : `${item.seriesId}-${item.tmdbId}`}
+                item={item}
+                onDelete={() => handleDeleteProgress(item)}
+              />
+            ))}
+          </div>
+          
+          {/* Pagination dots */}
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-6 gap-2">
+              {Array.from({ length: totalPages }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentIndex(index)}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    index === currentIndex ? 'bg-red-600' : 'bg-gray-600 hover:bg-gray-500'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -151,13 +267,6 @@ function ContinueWatchingCard({
   item: ContinueWatchingItem;
   onDelete: () => void;
 }) {
-  const movie = item.movie;
-  const runtime = movie.runtime || 120; // Default to 120 minutes if runtime is undefined
-  const progressPercent = Math.min(
-    Math.round((item.currentTime / (runtime * 60)) * 100),
-    100
-  );
-
   // Format time as hours and minutes
   const formatTime = (seconds: number) => {
     const totalMinutes = Math.floor(seconds / 60);
@@ -176,24 +285,73 @@ function ContinueWatchingCard({
     onDelete();
   };
 
+  // Get common properties based on item type
+  const getItemData = () => {
+    if (item.type === 'movie') {
+      const runtime = item.movie.runtime || 120;
+      const progressPercent = Math.min(
+        Math.round((item.currentTime / (runtime * 60)) * 100),
+        100
+      );
+      
+      return {
+        title: item.movie.title,
+        posterPath: item.movie.posterPath,
+        href: `/movies/${item.movie.id}`,
+        progressPercent,
+        subtitle: `${Math.round(progressPercent)}% watched`,
+        badge: { icon: Film, text: "Movie" }
+      };
+    } else {
+      // For series, we don't have episode runtime, so we'll estimate progress differently
+      // Assume 45 minutes per episode as default
+      const estimatedEpisodeRuntime = 45 * 60; // 45 minutes in seconds
+      const progressPercent = Math.min(
+        Math.round((item.currentTime / estimatedEpisodeRuntime) * 100),
+        100
+      );
+      
+      return {
+        title: item.series.title,
+        posterPath: item.series.posterPath,
+        href: `/series/${item.series.id}`,
+        progressPercent,
+        subtitle: item.episode 
+          ? `S${item.seasonNumber}E${item.episodeNumber}: ${item.episodeTitle || item.episode.title}`
+          : `${Math.round(progressPercent)}% watched`,
+        badge: { icon: Tv, text: "Series" }
+      };
+    }
+  };
+
+  const itemData = getItemData();
+
   return (
     <div className="relative group">
-      <Link href={`/movies/${movie.id}`}>
+      <Link href={itemData.href}>
         <Card className="overflow-hidden bg-gray-900 border-gray-800 transition-all hover:scale-105 hover:border-gray-700">
           <div className="relative aspect-[2/3]">
             <Image
-              src={api.utils.getTmdbImageUrl(movie.posterPath || "", "w500")}
-              alt={movie.title}
+              src={api.utils.getTmdbImageUrl(itemData.posterPath || "", "w500")}
+              alt={itemData.title}
               fill
               className="object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
 
+            {/* Type badge */}
+            <div className="absolute top-2 left-2">
+              <Badge variant="secondary" className="bg-black/70 text-white text-xs">
+                <itemData.badge.icon className="w-3 h-3 mr-1" />
+                {itemData.badge.text}
+              </Badge>
+            </div>
+
             {/* Progress bar */}
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
               <div
                 className="h-full bg-red-600"
-                style={{ width: `${progressPercent}%` }}
+                style={{ width: `${itemData.progressPercent}%` }}
               />
             </div>
 
@@ -213,9 +371,9 @@ function ContinueWatchingCard({
             </div>
           </div>
           <CardContent className="p-3">
-            <h3 className="font-medium text-sm truncate">{movie.title}</h3>
-            <p className="text-xs text-gray-400">
-              {Math.round(progressPercent)}% watched
+            <h3 className="font-medium text-sm truncate">{itemData.title}</h3>
+            <p className="text-xs text-gray-400 line-clamp-2">
+              {itemData.subtitle}
             </p>
           </CardContent>
         </Card>

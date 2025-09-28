@@ -9,7 +9,7 @@ import { ChevronDown, ChevronRight, ChevronLeft, Play } from "lucide-react";
 import { EpisodeCard } from "./EpisodeCard";
 import { cn } from "@/lib/utils";
 
-export default function SeasonSection({ season }: { season: Season }) {
+export default function SeasonSection({ season, seriesId }: { season: Season; seriesId: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
@@ -135,6 +135,7 @@ export default function SeasonSection({ season }: { season: Season }) {
                     <EpisodeCard
                       episode={episode}
                       seasonNumber={season.seasonNumber}
+                      seriesId={seriesId}
                     />
                   </div>
                 ))}
