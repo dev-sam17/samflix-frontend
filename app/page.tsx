@@ -243,8 +243,9 @@ export default function HomePage() {
       api.client.series.getAll({
         baseUrl,
         limit: 10,
-        sortBy: "createdAt",
+        sortBy: "lastAirDate",
         sortOrder: "desc",
+        status: "COMPLETED",
       }),
     []
   );
