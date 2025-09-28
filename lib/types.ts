@@ -134,3 +134,8 @@ export interface UserStats {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Season {
+  seasonNumber: number;
+  episodes: Episode[];
+}

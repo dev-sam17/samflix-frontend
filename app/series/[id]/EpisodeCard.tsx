@@ -24,94 +24,80 @@ export function EpisodeCard({
 
   return (
     <>
-      <Card className="group bg-gray-900/50 border-gray-800 hover:border-red-500/50 transition-all duration-300 hover:bg-gray-800/50">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0">
-              <div className="text-center">
-                <div className="text-xs text-gray-400">
-                  S{seasonNumber.toString().padStart(2, "0")}
-                </div>
-                <div className="text-sm font-semibold text-white">
-                  E{episode.episodeNumber.toString().padStart(2, "0")}
-                </div>
-              </div>
+      <Card className="group bg-gray-900/60 border-gray-700 hover:border-red-500/50 transition-all duration-300 hover:bg-gray-800/60 h-full">
+        <CardContent className="p-3 h-full flex flex-col">
+          {/* Episode Number and Title */}
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 bg-red-600/20 border border-red-500/30 rounded-md flex items-center justify-center flex-shrink-0">
+              <span className="text-xs font-bold text-red-400">
+                {episode.episodeNumber.toString().padStart(2, "0")}
+              </span>
             </div>
+            <h4 className="font-medium text-white text-sm line-clamp-1 group-hover:text-red-400 transition-colors flex-1">
+              {episode.title}
+            </h4>
+          </div>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between mb-2">
-                <h4 className="font-semibold text-white line-clamp-1 group-hover:text-red-400 transition-colors">
-                  {episode.title}
-                </h4>
-                <div className="flex gap-2 ml-4">
-                  <Badge
-                    variant="secondary"
-                    className="bg-green-600 text-white text-xs"
-                  >
-                    {episode.quality}
-                  </Badge>
-                  <Badge
-                    variant="outline"
-                    className="border-gray-600 text-gray-300 text-xs"
-                  >
-                    {episode.resolution}
-                  </Badge>
-                </div>
-              </div>
+          {/* Episode Info */}
+          <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {episode.runtime}m
+            </div>
+            <Badge
+              variant="outline"
+              className="border-gray-600/50 text-gray-400 text-xs px-1 py-0"
+            >
+              {episode.quality}
+            </Badge>
+          </div>
 
-              <div className="flex items-center gap-4 text-sm text-gray-400 mb-2">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(episode.airDate).toLocaleDateString()}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {episode.runtime}m
-                </div>
-              </div>
+          {/* Description - Minimal */}
+          <p className="text-gray-500 text-xs line-clamp-2 mb-3 flex-1">
+            {episode.overview}
+          </p>
 
-              <p className="text-gray-400 text-sm line-clamp-2 mb-3">
-                {episode.overview}
-              </p>
-
-              <div className="flex gap-2">
-                {episode.playPath &&
-                  episode.transcodeStatus === TranscodeStatus.COMPLETED && (
-                    <>
-                      {isAuthenticated ? (
-                        <Button
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                          onClick={() => setIsPlayerOpen(true)}
-                        >
-                          <Play className="w-4 h-4 mr-2" />
-                          Play
-                        </Button>
-                      ) : (
-                        <SignInButton
-                          mode="modal"
-                          fallbackRedirectUrl={window.location.href}
-                        >
-                          <Button className="bg-red-600 hover:bg-red-700 text-white">
-                            <Play className="w-4 h-4 mr-2" />
-                            Play
-                          </Button>
-                        </SignInButton>
-                      )}
-                    </>
+          {/* Play Button - Compact */}
+          <div className="mt-auto">
+            {episode.playPath &&
+              episode.transcodeStatus === TranscodeStatus.COMPLETED && (
+                <>
+                  {isAuthenticated ? (
+                    <Button
+                      size="sm"
+                      className="w-full bg-red-600 hover:bg-red-700 text-white text-xs h-7"
+                      onClick={() => setIsPlayerOpen(true)}
+                    >
+                      <Play className="w-3 h-3 mr-1" />
+                      Play
+                    </Button>
+                  ) : (
+                    <SignInButton
+                      mode="modal"
+                      fallbackRedirectUrl={window.location.href}
+                    >
+                      <Button
+                        size="sm"
+                        className="w-full bg-red-600 hover:bg-red-700 text-white text-xs h-7"
+                      >
+                        <Play className="w-3 h-3 mr-1" />
+                        Play
+                      </Button>
+                    </SignInButton>
                   )}
-                {(episode.transcodeStatus === TranscodeStatus.IN_PROGRESS ||
-                  episode.transcodeStatus === TranscodeStatus.PENDING) && (
-                  <Button
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                    onClick={() => setIsPlayerOpen(true)}
-                    disabled
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    UPLOADING
-                  </Button>
-                )}
-              </div>
-            </div>
+                </>
+              )}
+            {(episode.transcodeStatus === TranscodeStatus.IN_PROGRESS ||
+              episode.transcodeStatus === TranscodeStatus.PENDING) && (
+              <Button
+                size="sm"
+                className="w-full bg-gray-700 text-gray-400 cursor-not-allowed text-xs h-7"
+                disabled
+              >
+                <Clock className="w-3 h-3 mr-1" />
+                Processing
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -127,7 +127,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
 
   return (
     <>
-      <div className="relative h-[60vh] overflow-hidden">
+      <div className="relative h-[50vh] md:h-[60vh] overflow-hidden">
         {movie.backdropPath ? (
           <Image
             src={
@@ -146,10 +146,10 @@ export function MovieHeader({ movie }: { movie: Movie }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
       </div>
 
-      <div className="container mx-auto px-4 -mt-48 relative z-10">
+      <div className="container mx-auto px-4 -mt-20 md:-mt-32 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Poster */}
-          <div className="lg:col-span-1">
+          {/* Poster - Hidden on mobile, visible on desktop */}
+          <div className="hidden lg:block lg:col-span-1">
             <div className="aspect-[2/3] relative rounded-lg overflow-hidden shadow-2xl max-w-[300px] mx-auto">
               <Image
                 src={
@@ -159,13 +159,12 @@ export function MovieHeader({ movie }: { movie: Movie }) {
                 }
                 alt={movie.title}
                 fill
-                className="object-cover"
-                priority
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
               />
             </div>
           </div>
 
-          {/* Movie Info */}
+          {/* Movie Info - Full width on mobile, 3/4 width on desktop */}
           <div className="lg:col-span-3 space-y-4">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
@@ -192,7 +191,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
                 )}
               </div>
 
-              <h1 className="text-4xl font-bold text-white">{movie.title}</h1>
+              <h1 className="text-3xl md:text-4xl font-bold text-white">{movie.title}</h1>
 
               <div className="flex flex-wrap gap-2">
                 {movie.genres?.map((genre: string) => (
@@ -207,7 +206,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
               </div>
 
               {movie.overview && (
-                <p className="text-gray-300 leading-relaxed">
+                <p className="text-gray-300 text-base md:text-lg leading-relaxed">
                   {movie.overview}
                 </p>
               )}
@@ -216,7 +215,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
                 <>
                   {isAuthenticated ? (
                     <Button
-                      className="bg-red-600 hover:bg-red-700 text-white"
+                      className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
                       onClick={handlePlayClick}
                       disabled={isLoading}
                     >
@@ -228,7 +227,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
                       mode="modal"
                       fallbackRedirectUrl={window.location.href}
                     >
-                      <Button className="bg-red-600 hover:bg-red-700 text-white">
+                      <Button className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto">
                         <Play className="w-4 h-4 mr-2" />
                         Play
                       </Button>
@@ -239,7 +238,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
                     isAuthenticated && (
                       <Button
                         variant="outline"
-                        className="text-gray-300 border-gray-700 hover:bg-gray-800"
+                        className="text-gray-300 border-gray-700 hover:bg-gray-800 w-full sm:w-auto"
                         onClick={handleDeleteProgress}
                       >
                         <RotateCcw className="w-4 h-4 mr-2" />
@@ -266,7 +265,7 @@ export function MovieHeader({ movie }: { movie: Movie }) {
 
       {/* HLS Player Dialog */}
       <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
-        <DialogContent 
+        <DialogContent
           className="max-w-6xl p-0 bg-black border-gray-800"
           aria-describedby={undefined}
         >
@@ -274,7 +273,9 @@ export function MovieHeader({ movie }: { movie: Movie }) {
             {movie.title} - Video Player
           </DialogTitle>
           <HLSPlayer
-            src={apiBaseUrl ? new URL(apiBaseUrl + movie.playPath).toString() : ""}
+            src={
+              apiBaseUrl ? new URL(apiBaseUrl + movie.playPath).toString() : ""
+            }
             title={movie.title}
             poster={
               movie.backdropPath
