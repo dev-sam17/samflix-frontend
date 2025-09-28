@@ -50,8 +50,6 @@ export function ContinueWatching() {
           user.id
         );
 
-        console.log({ progressItems });
-
         if (progressItems.length === 0) {
           setIsLoading(false);
           return;
