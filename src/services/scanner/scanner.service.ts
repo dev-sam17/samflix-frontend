@@ -3,6 +3,7 @@ import path from "path";
 import { prisma } from "../../app";
 import { parserService } from "../parser/parser.service";
 import { tmdbService } from "../tmdb/tmdb.service";
+import { CacheInvalidationService } from "../../api/middleware/cache-invalidation";
 import {
   ScannerConfig,
   TMDBMovieResult,
@@ -78,6 +79,16 @@ class ScannerService {
       const cleanupResults = await this.cleanupOrphanedEntries(
         progressCallback
       );
+
+      // Delete resolved conflicts after moving data to collections
+      reportProgress("Cleaning up resolved conflicts", 95);
+      await this.deleteResolvedConflicts();
+
+      // Invalidate conflicts cache so new scan results are visible
+      await CacheInvalidationService.clearPattern(
+        "cache:/api/scanner/conflicts*"
+      );
+      console.log("Cleared conflicts cache after scan");
 
       reportProgress("Media scan and cleanup completed", 100, cleanupResults);
       return cleanupResults;
@@ -560,16 +571,19 @@ class ScannerService {
       });
 
       if (existingConflict) {
-        // Update existing conflict
+        // Update existing conflict (reset to unresolved and update matches)
+        console.log(`Updating existing conflict for: ${fileName}`);
         await prisma.scanningConflict.update({
           where: { id: existingConflict.id },
           data: {
+            fileName, // Update fileName in case it changed
             possibleMatches: matchesForDb || [],
-            resolved: false,
+            resolved: false, // Reset to unresolved
           },
         });
       } else {
-        // Create new conflict
+        // Create new conflict (this handles manually deleted conflicts)
+        console.log(`Creating new conflict for: ${fileName}`);
         await prisma.scanningConflict.create({
           data: {
             fileName,
@@ -795,6 +809,29 @@ class ScannerService {
       };
     } catch (error) {
       console.error("Error deleting all conflicts:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes all resolved scanning conflicts from the database
+   * This is called after scanning to clean up conflicts that have been resolved
+   * @returns A success message with the count of deleted conflicts
+   */
+  private async deleteResolvedConflicts() {
+    try {
+      // Delete all resolved conflicts
+      const result = await prisma.scanningConflict.deleteMany({
+        where: { resolved: true },
+      });
+
+      console.log(`Deleted ${result.count} resolved conflicts`);
+      return {
+        message: "Resolved conflicts deleted successfully",
+        count: result.count,
+      };
+    } catch (error) {
+      console.error("Error deleting resolved conflicts:", error);
       throw error;
     }
   }
