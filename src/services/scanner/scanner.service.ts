@@ -106,7 +106,7 @@ class ScannerService {
       const existingByPath = await prisma.movie.findFirst({
         where: { filePath },
       });
-      
+
       if (existingByPath) {
         return true;
       }
@@ -115,18 +115,18 @@ class ScannerService {
       const existingByFileName = await prisma.movie.findFirst({
         where: { fileName },
       });
-      
+
       if (existingByFileName) {
         return true;
       }
 
       // Finally check by title and year (escape special characters)
-      const sanitizedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const sanitizedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const titleQuery: any = {
-        title: { 
-          contains: sanitizedTitle, 
-          mode: "insensitive" 
-        }
+        title: {
+          contains: sanitizedTitle,
+          mode: "insensitive",
+        },
       };
 
       if (year) {
@@ -157,7 +157,7 @@ class ScannerService {
       const existingByPath = await prisma.episode.findFirst({
         where: { filePath },
       });
-      
+
       if (existingByPath) {
         return true;
       }
@@ -166,37 +166,46 @@ class ScannerService {
       const existingByFileName = await prisma.episode.findFirst({
         where: { fileName },
       });
-      
+
       if (existingByFileName) {
         return true;
       }
 
       // Finally check by series name, season, and episode number
-      const sanitizedSeriesName = seriesName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const sanitizedSeriesName = seriesName.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+      );
       const existingByDetails = await prisma.episode.findFirst({
         where: {
           AND: [
-            { 
+            {
               series: {
-                title: { 
-                  contains: sanitizedSeriesName, 
-                  mode: "insensitive" 
-                }
-              }
+                title: {
+                  contains: sanitizedSeriesName,
+                  mode: "insensitive",
+                },
+              },
             },
             { seasonNumber },
             { episodeNumber },
           ],
         },
         include: {
-          series: true
-        }
+          series: true,
+        },
       });
 
       return !!existingByDetails;
     } catch (error) {
       console.error("Error checking if episode exists in database:", error);
-      console.error("Problematic values:", { fileName, filePath, seriesName, seasonNumber, episodeNumber });
+      console.error("Problematic values:", {
+        fileName,
+        filePath,
+        seriesName,
+        seasonNumber,
+        episodeNumber,
+      });
       return false;
     }
   }
@@ -337,11 +346,36 @@ class ScannerService {
         const seriesDetails = await tmdbService.getTVDetails(
           searchResults[0].id
         );
-        const episodeDetails = await tmdbService.getEpisodeDetails(
-          searchResults[0].id,
-          parsedEpisode.seasonNumber,
-          parsedEpisode.episodeNumber
-        );
+
+        // Try to get episode details, handle 404 if episode doesn't exist in TMDB
+        let episodeDetails;
+        try {
+          episodeDetails = await tmdbService.getEpisodeDetails(
+            searchResults[0].id,
+            parsedEpisode.seasonNumber,
+            parsedEpisode.episodeNumber
+          );
+        } catch (episodeError: any) {
+          // If episode not found in TMDB (404), create a conflict
+          if (
+            episodeError.response?.status === 404 ||
+            episodeError.status === 404
+          ) {
+            console.warn(
+              `Episode not found in TMDB: ${parsedEpisode.seriesName} S${parsedEpisode.seasonNumber}E${parsedEpisode.episodeNumber} - Series found but episode doesn't exist in TMDB database`
+            );
+            // Create conflict with the series match but note that the specific episode wasn't found
+            await this.createScanningConflict(
+              "series",
+              parsedEpisode.fileName,
+              parsedEpisode.filePath,
+              [] // Empty array since the series exists but episode doesn't
+            );
+            continue;
+          }
+          // Re-throw other errors
+          throw episodeError;
+        }
 
         // Create or update series
         const series = await prisma.tvSeries.upsert({
