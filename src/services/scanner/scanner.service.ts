@@ -216,7 +216,17 @@ class ScannerService {
     for (const file of files) {
       try {
         const parsedMovie = parserService.parseMovie(file);
-        if (!parsedMovie) continue;
+        if (!parsedMovie) {
+          console.warn(`Unable to parse movie file: ${file}`);
+          // Create a conflict for unparseable files so user can manually resolve
+          await this.createScanningConflict(
+            "movie",
+            path.basename(file),
+            file,
+            []
+          );
+          continue;
+        }
 
         if (
           await this.isMovieInDatabase(
@@ -304,7 +314,17 @@ class ScannerService {
     for (const file of files) {
       try {
         const parsedEpisode = parserService.parseEpisode(file);
-        if (!parsedEpisode) continue;
+        if (!parsedEpisode) {
+          console.warn(`Unable to parse episode file: ${file}`);
+          // Create a conflict for unparseable files so user can manually resolve
+          await this.createScanningConflict(
+            "series",
+            path.basename(file),
+            file,
+            []
+          );
+          continue;
+        }
 
         if (
           await this.isEpisodeInDatabase(
