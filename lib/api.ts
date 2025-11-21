@@ -79,7 +79,7 @@ export const serverApi = {
       return apiRequest<PaginatedResponse<Movie>>(
         `/api/movies${query ? `?${query}` : ""}`,
         {},
-        "force-cache",
+        "no-store",
         API_BASE_URL
       );
     },
@@ -88,7 +88,7 @@ export const serverApi = {
       return apiRequest<Movie>(
         `/api/movies/${id}`,
         {},
-        "force-cache",
+        "no-store",
         API_BASE_URL
       );
     },
@@ -98,7 +98,7 @@ export const serverApi = {
       return apiRequest<string[]>(
         `/api/movies/genres/all`,
         {},
-        "force-cache",
+        "no-store",
         API_BASE_URL
       );
     },
@@ -108,7 +108,7 @@ export const serverApi = {
       return apiRequest<Movie[]>(
         `/api/movies/genre/${encodeURIComponent(genre)}`,
         {},
-        "force-cache",
+        "no-store",
         API_BASE_URL
       );
     },
@@ -136,7 +136,7 @@ export const serverApi = {
       return apiRequest<PaginatedResponse<TvSeries>>(
         `/api/series${query ? `?${query}` : ""}`,
         {},
-        "force-cache",
+        "no-store",
         API_BASE_URL
       );
     },
@@ -145,7 +145,7 @@ export const serverApi = {
       return apiRequest<TvSeries>(
         `/api/series/${id}`,
         {},
-        "force-cache",
+        "no-store",
         API_BASE_URL
       );
     },
@@ -155,7 +155,7 @@ export const serverApi = {
       return apiRequest<string[]>(
         `/api/series/genres/all`,
         {},
-        "force-cache",
+        "no-store",
         API_BASE_URL
       );
     },
@@ -165,7 +165,7 @@ export const serverApi = {
       return apiRequest<TvSeries[]>(
         `/api/series/genre/${encodeURIComponent(genre)}`,
         {},
-        "force-cache",
+        "no-store",
         API_BASE_URL
       );
     },
