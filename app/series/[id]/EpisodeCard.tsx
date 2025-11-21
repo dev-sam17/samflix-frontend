@@ -114,14 +114,20 @@ export function EpisodeCard({
                 </>
               )}
             {(episode.transcodeStatus === TranscodeStatus.IN_PROGRESS ||
-              episode.transcodeStatus === TranscodeStatus.PENDING) && (
+              episode.transcodeStatus === TranscodeStatus.QUEUED) && (
               <Button
                 size="sm"
-                className="w-full bg-gray-700 text-gray-400 cursor-not-allowed text-xs h-7"
+                className={`w-full cursor-not-allowed text-xs h-7 ${
+                  episode.transcodeStatus === TranscodeStatus.IN_PROGRESS
+                    ? "bg-yellow-600 text-black hover:bg-yellow-600"
+                    : "bg-gray-700 text-gray-400 hover:bg-gray-700"
+                }`}
                 disabled
               >
                 <Clock className="w-3 h-3 mr-1" />
-                Processing
+                {episode.transcodeStatus === TranscodeStatus.IN_PROGRESS
+                  ? "UPLOADING"
+                  : "QUEUED"}
               </Button>
             )}
           </div>

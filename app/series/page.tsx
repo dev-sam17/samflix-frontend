@@ -12,7 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, Grid, List, Calendar, Play, Tv, Star } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Grid,
+  List,
+  Calendar,
+  Play,
+  Tv,
+  Star,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -119,7 +128,7 @@ function SeriesCard({
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-110"
           />
-          
+
           {/* Play Overlay */}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors duration-300 flex items-center justify-center">
             <Play className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -132,11 +141,13 @@ function SeriesCard({
           </Badge>
 
           {/* Status Badge */}
-          <Badge className={`absolute top-2 right-2 ${
-            series.status === "Ended"
-              ? "bg-red-600 text-white"
-              : "bg-green-600 text-white"
-          }`}>
+          <Badge
+            className={`absolute top-2 right-2 ${
+              series.status === "Ended"
+                ? "bg-red-600 text-white"
+                : "bg-green-600 text-white"
+            }`}
+          >
             {series.status}
           </Badge>
 
@@ -146,9 +157,7 @@ function SeriesCard({
               <div>
                 {totalSeasons} Season{totalSeasons > 1 ? "s" : ""}
               </div>
-              <div className="text-gray-300">
-                {totalEpisodes} Episodes
-              </div>
+              <div className="text-gray-300">{totalEpisodes} Episodes</div>
             </div>
           </div>
         </div>
@@ -157,7 +166,7 @@ function SeriesCard({
           <h3 className="font-semibold text-white text-sm line-clamp-2 group-hover:text-red-400 transition-colors">
             {series.title}
           </h3>
-          
+
           <div className="flex items-center justify-between text-xs text-gray-400">
             <div className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
@@ -227,10 +236,7 @@ export default function SeriesPage() {
   );
 
   // Fetch genres
-  const { data: genres } = useApi(
-    () => api.server.series.getAllGenres(),
-    []
-  );
+  const { data: genres } = useApi(() => api.server.series.getAllGenres(), []);
 
   // Handle search with debounce
   const handleSearch = api.utils.debounce((value: string) => {
@@ -269,10 +275,13 @@ export default function SeriesPage() {
     }
   };
 
-  // Filter series to only show completed ones
-  const filteredSeries = seriesData?.data?.filter(
-    (series) => series.transcodeStatus === TranscodeStatus.COMPLETED
-  ) || [];
+  // Filter series to show only COMPLETED or IN_PROGRESS
+  const filteredSeries =
+    seriesData?.data?.filter(
+      (series) =>
+        series.transcodeStatus === TranscodeStatus.COMPLETED ||
+        series.transcodeStatus === TranscodeStatus.IN_PROGRESS
+    ) || [];
 
   return (
     <div className="min-h-screen bg-black text-white">
