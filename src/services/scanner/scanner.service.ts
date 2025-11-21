@@ -471,20 +471,53 @@ class ScannerService {
       }
     }
 
-    // Create grouped conflicts for unparseable files
+    // Create grouped conflicts for unparseable files with TMDB search
     for (const [seriesFolder, files] of unparseableFilesBySeries.entries()) {
       const seriesFolderName = path.basename(seriesFolder);
       console.log(
         `Creating conflict for ${files.length} unparseable files in series: ${seriesFolderName}`
       );
 
-      // Use the first file's path as the representative conflict path
-      // Store all file paths in a custom format that we can parse later
+      // Extract series name from folder name using improved algorithm
+      const extractedSeriesName =
+        this.extractSeriesNameFromFolder(seriesFolderName);
+      console.log(
+        `Extracted series name: "${extractedSeriesName}" from folder: "${seriesFolderName}"`
+      );
+
+      // Search TMDB with the extracted name
+      let searchResults: any[] = [];
+      try {
+        searchResults = await tmdbService.searchTV(extractedSeriesName);
+        console.log(
+          `Found ${searchResults.length} TMDB matches for: "${extractedSeriesName}"`
+        );
+
+        // If no results, try with cleaned name (remove year, quality info, etc.)
+        if (searchResults.length === 0) {
+          const cleanedName =
+            this.cleanSeriesNameForSearch(extractedSeriesName);
+          if (cleanedName !== extractedSeriesName) {
+            console.log(`Retrying search with cleaned name: "${cleanedName}"`);
+            searchResults = await tmdbService.searchTV(cleanedName);
+            console.log(
+              `Found ${searchResults.length} TMDB matches for cleaned name`
+            );
+          }
+        }
+      } catch (error) {
+        console.error(
+          `Error searching TMDB for series: ${extractedSeriesName}`,
+          error
+        );
+      }
+
+      // Create conflict with search results
       await this.createScanningConflict(
         "series",
         `${seriesFolderName} (${files.length} episodes)`,
         files[0], // Use first file as primary path
-        []
+        searchResults
       );
     }
   }
@@ -1048,6 +1081,62 @@ class ScannerService {
       console.error("Error removing deleted episode:", error);
       throw error;
     }
+  }
+
+  /**
+   * Extract series name from folder name with improved algorithm
+   * Handles various naming patterns and removes quality/year info
+   */
+  private extractSeriesNameFromFolder(folderName: string): string {
+    // Remove file extension if present
+    let name = folderName.replace(/\.(mkv|mp4|avi)$/i, "");
+
+    // Remove season indicators (S01, S02, etc.) and everything after
+    name = name.replace(/[\s\.\-\_]+[Ss]\d{1,2}.*$/i, "");
+
+    // Remove year in parentheses and everything after: (2025) Hindi 1080p...
+    name = name.replace(/\s*\(\d{4}\).*$/i, "");
+
+    // Remove year without parentheses: 2025 Hindi 1080p...
+    name = name.replace(/\s+\d{4}\s+.*$/i, "");
+
+    // Remove common quality indicators and everything after
+    name = name.replace(
+      /\s+(1080p|720p|480p|2160p|4K|WEBRip|WEB-DL|BluRay|BRRip|HDRip|DVDRip).*$/i,
+      ""
+    );
+
+    // Clean up separators
+    name = name.replace(/[\._]/g, " ");
+    name = name.replace(/\s+/g, " ");
+    name = name.trim();
+
+    return name;
+  }
+
+  /**
+   * Clean series name for better TMDB search results
+   * Removes common words that might interfere with search
+   */
+  private cleanSeriesNameForSearch(seriesName: string): string {
+    let cleaned = seriesName;
+
+    // Remove language indicators
+    cleaned = cleaned.replace(
+      /\s+(Hindi|English|Tamil|Telugu|Malayalam|Kannada|Bengali)\s*/gi,
+      " "
+    );
+
+    // Remove "The" from the beginning if it exists (TMDB sometimes doesn't include it)
+    cleaned = cleaned.replace(/^The\s+/i, "");
+
+    // Remove common suffixes
+    cleaned = cleaned.replace(/\s+(Series|Show|Season)$/i, "");
+
+    // Clean up extra spaces
+    cleaned = cleaned.replace(/\s+/g, " ").trim();
+
+    return cleaned;
   }
 }
 
