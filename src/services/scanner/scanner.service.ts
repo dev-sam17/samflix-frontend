@@ -311,18 +311,21 @@ class ScannerService {
   private async scanSeriesDirectory(directoryPath: string) {
     const files = await this.getMediaFiles(directoryPath);
 
+    // Track unparseable files by series folder to group them
+    const unparseableFilesBySeries = new Map<string, string[]>();
+
     for (const file of files) {
       try {
         const parsedEpisode = parserService.parseEpisode(file);
         if (!parsedEpisode) {
           console.warn(`Unable to parse episode file: ${file}`);
-          // Create a conflict for unparseable files so user can manually resolve
-          await this.createScanningConflict(
-            "series",
-            path.basename(file),
-            file,
-            []
-          );
+
+          // Group unparseable files by their parent directory (series folder)
+          const seriesFolder = path.dirname(file);
+          if (!unparseableFilesBySeries.has(seriesFolder)) {
+            unparseableFilesBySeries.set(seriesFolder, []);
+          }
+          unparseableFilesBySeries.get(seriesFolder)!.push(file);
           continue;
         }
 
@@ -466,6 +469,23 @@ class ScannerService {
       } catch (error) {
         console.error(`Error processing episode file ${file}:`, error);
       }
+    }
+
+    // Create grouped conflicts for unparseable files
+    for (const [seriesFolder, files] of unparseableFilesBySeries.entries()) {
+      const seriesFolderName = path.basename(seriesFolder);
+      console.log(
+        `Creating conflict for ${files.length} unparseable files in series: ${seriesFolderName}`
+      );
+
+      // Use the first file's path as the representative conflict path
+      // Store all file paths in a custom format that we can parse later
+      await this.createScanningConflict(
+        "series",
+        `${seriesFolderName} (${files.length} episodes)`,
+        files[0], // Use first file as primary path
+        []
+      );
     }
   }
 
