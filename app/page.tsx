@@ -228,7 +228,6 @@ export default function HomePage() {
         limit: 10,
         sortBy: "createdAt",
         sortOrder: "desc",
-        status: "COMPLETED",
       }),
     []
   );
@@ -243,9 +242,8 @@ export default function HomePage() {
       api.client.series.getAll({
         baseUrl,
         limit: 10,
-        sortBy: "lastAirDate",
+        sortBy: "createdAt",
         sortOrder: "desc",
-        status: "COMPLETED",
       }),
     []
   );
@@ -284,10 +282,17 @@ export default function HomePage() {
     }
   };
 
-  const movies = Array.isArray(moviesData?.data) ? moviesData.data : [];
+  const movies = Array.isArray(moviesData?.data)
+    ? moviesData.data.filter(
+        (movie) => movie.transcodeStatus === TranscodeStatus.COMPLETED
+      )
+    : [];
+
   const series = Array.isArray(seriesData?.data)
     ? seriesData.data.filter(
-        (series) => series.transcodeStatus === TranscodeStatus.COMPLETED
+        (series) =>
+          series.transcodeStatus === TranscodeStatus.COMPLETED ||
+          series.transcodeStatus === TranscodeStatus.IN_PROGRESS
       )
     : [];
 
