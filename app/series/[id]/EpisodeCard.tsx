@@ -145,7 +145,7 @@ export function EpisodeCard({
           <HLSPlayer
             src={
               apiBaseUrl && episode.playPath
-                ? new URL(apiBaseUrl + episode.playPath).toString()
+                ? `${apiBaseUrl}${episode.playPath}`
                 : ""
             }
             title={`${episode.title} - S${seasonNumber}E${episode.episodeNumber}`}
