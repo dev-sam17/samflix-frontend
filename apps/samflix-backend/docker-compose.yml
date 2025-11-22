@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
+    # ports:
+    #   - "3310:3000"
+    network_mode: "host"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3310
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    volumes:
+      # add your own media paths here
+      - "/media/Storage3/Movies/Anime Movies:/media/movies/anime"
+      - "/media/Storage3/Movies/Bollywood:/media/movies/bollywood"
+      - "/media/Storage3/Movies/Hollywood:/media/movies/hollywood"
+      - "/media/Storage3/Movies/Korean Movies:/media/movies/korean"
+      - "/media/Storage3/Movies/South Action:/media/movies/south"
+      - "/media/Storage3/Web Series/Anime Series:/media/series/anime"
+      - "/media/Storage3/Web Series/K Drama:/media/series/k-drama"
+      - "/media/Storage3/Web Series/English:/media/series/english"
+      - "/media/Storage3/Web Series/Hindi:/media/series/hindi"
+      - "/media/Storage3/Movies/test-movies:/media/movies/test"
+      - "/media/Storage3/Web Series/test-series:/media/series/test"
+    restart: unless-stopped
