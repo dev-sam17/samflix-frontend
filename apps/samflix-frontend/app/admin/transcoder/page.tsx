@@ -1,0 +1,1019 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Search,
+  RefreshCw,
+  Film,
+  Tv,
+  PlayCircle,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Activity,
+  Loader2,
+  CheckSquare,
+  Square,
+} from "lucide-react";
+import api from "@/lib/api";
+import { TranscodeStatus, Movie, TvSeries, Episode } from "@/lib/types";
+import {
+  useApiWithContext,
+  useMutationWithContext,
+} from "@/hooks/use-api-with-context";
+import { useApiUrl } from "@/contexts/api-url-context";
+
+// Helper component for status badge
+function StatusBadge({ status }: { status: TranscodeStatus }) {
+  switch (status) {
+    case TranscodeStatus.PENDING:
+      return (
+        <Badge className="bg-yellow-600 hover:bg-yellow-700 text-white">
+          Pending
+        </Badge>
+      );
+    case TranscodeStatus.IN_PROGRESS:
+      return (
+        <Badge className="bg-blue-600 hover:bg-blue-700 text-white">
+          In Progress
+        </Badge>
+      );
+    case TranscodeStatus.QUEUED:
+      return (
+        <Badge className="bg-gray-600 hover:bg-gray-700 text-white">
+          Queued
+        </Badge>
+      );
+    case TranscodeStatus.COMPLETED:
+      return (
+        <Badge className="bg-green-600 hover:bg-green-700 text-white">
+          Completed
+        </Badge>
+      );
+    case TranscodeStatus.FAILED:
+      return (
+        <Badge className="bg-red-600 hover:bg-red-700 text-white">Failed</Badge>
+      );
+    default:
+      return <Badge className="border-gray-500 text-gray-400">Unknown</Badge>;
+  }
+}
+
+// Movie table component
+function MovieTable() {
+  const baseUrl = useApiUrl();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [movies, setMovies] = useState<Array<Movie>>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedStatus, setSelectedStatus] = useState<
+    Record<string, TranscodeStatus>
+  >({});
+  const [updatingMovies, setUpdatingMovies] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [statusFilter, setStatusFilter] = useState<TranscodeStatus | "ALL">(
+    "ALL"
+  );
+  const [selectedMovies, setSelectedMovies] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<TranscodeStatus | "">(""); 
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
+  // Fetch movies using the existing API
+  const {
+    data: moviesData,
+    loading: isLoading,
+    error,
+    refetch,
+  } = useApiWithContext(
+    (baseUrl) => () =>
+      api.client.movies.getAll({
+        baseUrl,
+        page: 1,
+        limit: 100,
+        search: searchQuery,
+      })
+  );
+
+  // Update transcode status mutation
+  const { mutate: updateStatus } = useMutationWithContext(
+    (baseUrl: string) => (params: { id: string; status: string }) =>
+      api.client.transcode.updateMovieStatus(baseUrl, params.id, params.status)
+  );
+
+  useEffect(() => {
+    if (moviesData) {
+      setMovies(moviesData.data);
+      setLoading(false);
+    }
+  }, [moviesData]);
+
+  const handleSearch = () => {
+    setLoading(true);
+    refetch();
+  };
+
+  const handleStatusChange = (movieId: string, status: TranscodeStatus) => {
+    setSelectedStatus((prev) => ({ ...prev, [movieId]: status }));
+  };
+
+  const handleUpdateStatus = async (movieId: string) => {
+    const status = selectedStatus[movieId];
+    if (!status) {
+      toast.error("Please select a status first");
+      return;
+    }
+
+    try {
+      setUpdatingMovies((prev) => ({ ...prev, [movieId]: true }));
+      const result = await updateStatus({ id: movieId, status });
+
+      // Update the local state immediately
+      setMovies((prevMovies) =>
+        prevMovies.map((movie) =>
+          movie.id === movieId
+            ? {
+                ...movie,
+                transcodeStatus: result.data.transcodeStatus as TranscodeStatus,
+              }
+            : movie
+        )
+      );
+
+      // Clear the selected status for this movie
+      setSelectedStatus((prev) => {
+        const newState = { ...prev };
+        delete newState[movieId];
+        return newState;
+      });
+
+      toast.success(
+        `Updated status for ${result.data.title} to ${result.data.transcodeStatus}`
+      );
+    } catch (error) {
+      toast.error("Failed to update status");
+    } finally {
+      setUpdatingMovies((prev) => ({ ...prev, [movieId]: false }));
+    }
+  };
+
+  // Bulk update functions
+  const handleSelectMovie = (movieId: string, checked: boolean) => {
+    setSelectedMovies(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(movieId);
+      } else {
+        newSet.delete(movieId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllMovies = (checked: boolean) => {
+    if (checked) {
+      setSelectedMovies(new Set(filteredMovies.map(movie => movie.id)));
+    } else {
+      setSelectedMovies(new Set());
+    }
+  };
+
+  const handleBulkUpdate = async () => {
+    if (selectedMovies.size === 0) {
+      toast.error("Please select movies to update");
+      return;
+    }
+    if (!bulkStatus) {
+      toast.error("Please select a status for bulk update");
+      return;
+    }
+
+    setIsBulkUpdating(true);
+    const movieIds = Array.from(selectedMovies);
+    
+    try {
+      // Use Promise.all for concurrent updates
+      const updatePromises = movieIds.map(movieId => 
+        updateStatus({ id: movieId, status: bulkStatus })
+      );
+
+      const results = await Promise.all(updatePromises);
+      
+      // Update local state for all updated movies
+      setMovies(prevMovies =>
+        prevMovies.map(movie => {
+          if (selectedMovies.has(movie.id)) {
+            return {
+              ...movie,
+              transcodeStatus: bulkStatus,
+            };
+          }
+          return movie;
+        })
+      );
+
+      // Clear selections
+      setSelectedMovies(new Set());
+      setBulkStatus("");
+
+      toast.success(
+        `Successfully updated ${results.length} movies to ${bulkStatus} status`
+      );
+    } catch (error) {
+      toast.error("Failed to update some movies. Please try again.");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  // Filter movies based on search query and status filter
+  const filteredMovies = movies.filter((movie) => {
+    const matchesSearch =
+      !searchQuery ||
+      movie.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      statusFilter === "ALL" || movie.transcodeStatus === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-4 mb-4">
+        <div className="flex flex-col md:flex-row gap-4 mb-4">
+          <div className="flex-1">
+            <Input
+              type="text"
+              placeholder="Search movies..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-xs bg-gray-900 border-gray-700 focus:border-red-500 focus:ring-red-500/20"
+            />
+          </div>
+          <div className="w-full md:w-64">
+            <Select
+              value={statusFilter}
+              onValueChange={(value) =>
+                setStatusFilter(value as TranscodeStatus | "ALL")
+              }
+            >
+              <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-900 border-gray-700">
+                <SelectItem value="ALL">All Statuses</SelectItem>
+                <SelectItem value={TranscodeStatus.PENDING}>Pending</SelectItem>
+                <SelectItem value={TranscodeStatus.QUEUED}>Queued</SelectItem>
+                <SelectItem value={TranscodeStatus.IN_PROGRESS}>
+                  In Progress
+                </SelectItem>
+                <SelectItem value={TranscodeStatus.COMPLETED}>
+                  Completed
+                </SelectItem>
+                <SelectItem value={TranscodeStatus.FAILED}>Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Button onClick={handleSearch} variant="outline" size="icon">
+          <Search className="h-4 w-4" />
+        </Button>
+        <Button onClick={() => refetch()} variant="outline" size="icon">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Bulk Actions */}
+      {selectedMovies.size > 0 && (
+        <div className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <span className="text-sm text-gray-300">
+            {selectedMovies.size} movie{selectedMovies.size !== 1 ? 's' : ''} selected
+          </span>
+          <Select value={bulkStatus} onValueChange={(value) => setBulkStatus(value as TranscodeStatus)}>
+            <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-700">
+              <SelectItem value={TranscodeStatus.PENDING}>Pending</SelectItem>
+              <SelectItem value={TranscodeStatus.IN_PROGRESS}>In Progress</SelectItem>
+              <SelectItem value={TranscodeStatus.QUEUED}>Queued</SelectItem>
+              <SelectItem value={TranscodeStatus.COMPLETED}>Completed</SelectItem>
+              <SelectItem value={TranscodeStatus.FAILED}>Failed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            onClick={handleBulkUpdate}
+            disabled={isBulkUpdating || !bulkStatus}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {isBulkUpdating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              `Update ${selectedMovies.size} Movie${selectedMovies.size !== 1 ? 's' : ''}`
+            )}
+          </Button>
+          <Button 
+            onClick={() => setSelectedMovies(new Set())}
+            variant="outline"
+            size="sm"
+          >
+            Clear Selection
+          </Button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-8">Loading movies...</div>
+      ) : (
+        <Table className="border border-gray-700 rounded-md overflow-hidden">
+          <TableHeader className="bg-gray-800">
+            <TableRow className="hover:bg-gray-800/80 border-b border-gray-700">
+              <TableHead className="text-white w-12">
+                <Checkbox
+                  checked={selectedMovies.size === filteredMovies.length && filteredMovies.length > 0}
+                  onCheckedChange={handleSelectAllMovies}
+                  aria-label="Select all movies"
+                />
+              </TableHead>
+              <TableHead className="text-white">Title</TableHead>
+              <TableHead className="text-white">Current Status</TableHead>
+              <TableHead className="text-white">New Status</TableHead>
+              <TableHead className="text-white">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredMovies.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  No movies found
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredMovies.map((movie) => (
+                <TableRow
+                  key={movie.id}
+                  className="hover:bg-gray-800/50 border-b border-gray-700"
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedMovies.has(movie.id)}
+                      onCheckedChange={(checked) => handleSelectMovie(movie.id, checked as boolean)}
+                      aria-label={`Select ${movie.title}`}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">{movie.title}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={movie.transcodeStatus} />
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={selectedStatus[movie.id] || ""}
+                      onValueChange={(value) =>
+                        handleStatusChange(movie.id, value as TranscodeStatus)
+                      }
+                    >
+                      <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-900 border-gray-700">
+                        <SelectItem value={TranscodeStatus.PENDING}>
+                          Pending
+                        </SelectItem>
+                        <SelectItem value={TranscodeStatus.IN_PROGRESS}>
+                          In Progress
+                        </SelectItem>
+                        <SelectItem value={TranscodeStatus.QUEUED}>
+                          Queued
+                        </SelectItem>
+                        <SelectItem value={TranscodeStatus.COMPLETED}>
+                          Completed
+                        </SelectItem>
+                        <SelectItem value={TranscodeStatus.FAILED}>
+                          Failed
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      onClick={() => handleUpdateStatus(movie.id)}
+                      size="sm"
+                      className="bg-red-600 hover:bg-red-700"
+                      disabled={updatingMovies[movie.id]}
+                    >
+                      {updatingMovies[movie.id] ? (
+                        <>
+                          <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                          Updating...
+                        </>
+                      ) : (
+                        "Update"
+                      )}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+
+// Series table component
+function SeriesTable() {
+  const baseUrl = useApiUrl();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [series, setSeries] = useState<Array<TvSeries>>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedStatus, setSelectedStatus] = useState<
+    Record<string, TranscodeStatus>
+  >({});
+  const [updatingSeries, setUpdatingSeries] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [statusFilter, setStatusFilter] = useState<TranscodeStatus | "ALL">(
+    "ALL"
+  );
+  const [selectedSeries, setSelectedSeries] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<TranscodeStatus | "">(""); 
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
+  // Fetch series using the existing API
+  const {
+    data: seriesData,
+    loading: isLoading,
+    error,
+    refetch,
+  } = useApiWithContext(
+    (baseUrl) => () =>
+      api.client.series.getAll({
+        baseUrl,
+        page: 1,
+        limit: 100,
+        search: searchQuery,
+      })
+  );
+
+  // Update transcode status mutation for series
+  const { mutate: updateStatus } = useMutationWithContext(
+    (baseUrl: string) => (params: { id: string; status: string }) =>
+      api.client.transcode.updateSeriesStatus(baseUrl, params.id, params.status)
+  );
+
+  useEffect(() => {
+    if (seriesData) {
+      setSeries(seriesData.data);
+      setLoading(false);
+    }
+  }, [seriesData]);
+
+  const handleSearch = () => {
+    setLoading(true);
+    refetch();
+  };
+
+  const handleStatusChange = (seriesId: string, status: TranscodeStatus) => {
+    setSelectedStatus((prev) => ({ ...prev, [seriesId]: status }));
+  };
+
+  const handleUpdateStatus = async (seriesId: string) => {
+    const status = selectedStatus[seriesId];
+    if (!status) {
+      toast.error("Please select a status first");
+      return;
+    }
+
+    try {
+      setUpdatingSeries((prev) => ({ ...prev, [seriesId]: true }));
+      const result = await updateStatus({ id: seriesId, status });
+
+      // Update the local state immediately
+      setSeries((prevSeries) =>
+        prevSeries.map((series) =>
+          series.id === seriesId
+            ? {
+                ...series,
+                transcodeStatus: status as TranscodeStatus,
+              }
+            : series
+        )
+      );
+
+      // Clear the selected status for this series
+      setSelectedStatus((prev) => {
+        const newState = { ...prev };
+        delete newState[seriesId];
+        return newState;
+      });
+
+      // Get series title from local state for better message
+      const seriesTitle = series.find(s => s.id === seriesId)?.title || 'Series';
+      const episodeCount = result.data.updatedEpisodesCount || 0;
+
+      toast.success(
+        `Updated status for ${seriesTitle} to ${status}. Updated ${episodeCount} episodes.`
+      );
+    } catch (error) {
+      toast.error("Failed to update status");
+    } finally {
+      setUpdatingSeries((prev) => ({ ...prev, [seriesId]: false }));
+    }
+  };
+
+  // Bulk update functions for series
+  const handleSelectSeries = (seriesId: string, checked: boolean) => {
+    setSelectedSeries(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(seriesId);
+      } else {
+        newSet.delete(seriesId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllSeries = (checked: boolean) => {
+    if (checked) {
+      setSelectedSeries(new Set(filteredSeries.map(series => series.id)));
+    } else {
+      setSelectedSeries(new Set());
+    }
+  };
+
+  const handleBulkUpdateSeries = async () => {
+    if (selectedSeries.size === 0) {
+      toast.error("Please select series to update");
+      return;
+    }
+    if (!bulkStatus) {
+      toast.error("Please select a status for bulk update");
+      return;
+    }
+
+    setIsBulkUpdating(true);
+    const seriesIds = Array.from(selectedSeries);
+    
+    try {
+      // Use Promise.all for concurrent updates
+      const updatePromises = seriesIds.map(seriesId => 
+        updateStatus({ id: seriesId, status: bulkStatus })
+      );
+
+      const results = await Promise.all(updatePromises);
+      
+      // Update local state for all updated series
+      setSeries(prevSeries =>
+        prevSeries.map(seriesItem => {
+          if (selectedSeries.has(seriesItem.id)) {
+            return {
+              ...seriesItem,
+              transcodeStatus: bulkStatus,
+            };
+          }
+          return seriesItem;
+        })
+      );
+
+      // Calculate total episodes updated
+      const totalEpisodes = results.reduce((sum, result) => 
+        sum + (result.data.updatedEpisodesCount || 0), 0
+      );
+
+      // Clear selections
+      setSelectedSeries(new Set());
+      setBulkStatus("");
+
+      toast.success(
+        `Successfully updated ${results.length} series to ${bulkStatus} status. Updated ${totalEpisodes} episodes total.`
+      );
+    } catch (error) {
+      toast.error("Failed to update some series. Please try again.");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  // Filter series based on search query and status filter
+  const filteredSeries = series.filter((seriesItem) => {
+    const matchesSearch =
+      !searchQuery ||
+      seriesItem.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      statusFilter === "ALL" || seriesItem.transcodeStatus === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-4 mb-4">
+        <div className="flex flex-col md:flex-row gap-4 mb-4">
+          <div className="flex-1">
+            <Input
+              type="text"
+              placeholder="Search series..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-gray-900 border-gray-700 text-white focus:ring-red-500 focus:border-red-500"
+            />
+          </div>
+          <div className="w-full md:w-64">
+            <Select
+              value={statusFilter}
+              onValueChange={(value) =>
+                setStatusFilter(value as TranscodeStatus | "ALL")
+              }
+            >
+              <SelectTrigger className="bg-gray-900 border-gray-700 text-white focus:ring-red-500">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                <SelectItem value="ALL">All Statuses</SelectItem>
+                <SelectItem value={TranscodeStatus.PENDING}>Pending</SelectItem>
+                <SelectItem value={TranscodeStatus.QUEUED}>Queued</SelectItem>
+                <SelectItem value={TranscodeStatus.IN_PROGRESS}>
+                  In Progress
+                </SelectItem>
+                <SelectItem value={TranscodeStatus.COMPLETED}>
+                  Completed
+                </SelectItem>
+                <SelectItem value={TranscodeStatus.FAILED}>Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Button onClick={handleSearch} variant="outline" size="icon">
+          <Search className="h-4 w-4" />
+        </Button>
+        <Button onClick={() => refetch()} variant="outline" size="icon">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Bulk Actions for Series */}
+      {selectedSeries.size > 0 && (
+        <div className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <span className="text-sm text-gray-300">
+            {selectedSeries.size} series selected
+          </span>
+          <Select value={bulkStatus} onValueChange={(value) => setBulkStatus(value as TranscodeStatus)}>
+            <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-700">
+              <SelectItem value={TranscodeStatus.PENDING}>Pending</SelectItem>
+              <SelectItem value={TranscodeStatus.IN_PROGRESS}>In Progress</SelectItem>
+              <SelectItem value={TranscodeStatus.QUEUED}>Queued</SelectItem>
+              <SelectItem value={TranscodeStatus.COMPLETED}>Completed</SelectItem>
+              <SelectItem value={TranscodeStatus.FAILED}>Failed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            onClick={handleBulkUpdateSeries}
+            disabled={isBulkUpdating || !bulkStatus}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {isBulkUpdating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              `Update ${selectedSeries.size} Series`
+            )}
+          </Button>
+          <Button 
+            onClick={() => setSelectedSeries(new Set())}
+            variant="outline"
+            size="sm"
+          >
+            Clear Selection
+          </Button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-8">Loading series...</div>
+      ) : (
+        <Table className="border border-gray-700 rounded-md overflow-hidden">
+          <TableHeader className="bg-gray-800">
+            <TableRow className="hover:bg-gray-800/80 border-b border-gray-700">
+              <TableHead className="text-white w-12">
+                <Checkbox
+                  checked={selectedSeries.size === filteredSeries.length && filteredSeries.length > 0}
+                  onCheckedChange={handleSelectAllSeries}
+                  aria-label="Select all series"
+                />
+              </TableHead>
+              <TableHead className="text-white">Series Title</TableHead>
+              <TableHead className="text-white">Current Status</TableHead>
+              <TableHead className="text-white">New Status</TableHead>
+              <TableHead className="text-white">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredSeries.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  No series found
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredSeries.map((seriesItem) => (
+                <TableRow
+                  key={seriesItem.id}
+                  className="hover:bg-gray-800/50 border-b border-gray-700"
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedSeries.has(seriesItem.id)}
+                      onCheckedChange={(checked) => handleSelectSeries(seriesItem.id, checked as boolean)}
+                      aria-label={`Select ${seriesItem.title}`}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {seriesItem.title}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={seriesItem.transcodeStatus} />
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={selectedStatus[seriesItem.id] || ""}
+                      onValueChange={(value) =>
+                        handleStatusChange(
+                          seriesItem.id,
+                          value as TranscodeStatus
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-900 border-gray-700">
+                        <SelectItem value={TranscodeStatus.PENDING}>
+                          Pending
+                        </SelectItem>
+                        <SelectItem value={TranscodeStatus.QUEUED}>
+                          Queued
+                        </SelectItem>
+                        <SelectItem value={TranscodeStatus.IN_PROGRESS}>
+                          In Progress
+                        </SelectItem>
+                        <SelectItem value={TranscodeStatus.COMPLETED}>
+                          Completed
+                        </SelectItem>
+                        <SelectItem value={TranscodeStatus.FAILED}>
+                          Failed
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      onClick={() => handleUpdateStatus(seriesItem.id)}
+                      size="sm"
+                      className="bg-red-600 hover:bg-red-700"
+                      disabled={updatingSeries[seriesItem.id]}
+                    >
+                      {updatingSeries[seriesItem.id] ? (
+                        <>
+                          <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                          Updating...
+                        </>
+                      ) : (
+                        "Update"
+                      )}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+
+// Main Transcoder Page Component
+export default function TranscoderPage() {
+  // Get health data for system status
+  const { data: healthData } = useApiWithContext(
+    (baseUrl) => () => api.client.system.healthCheck(baseUrl),
+    []
+  );
+
+  // Get transcode statistics
+  const { data: statsData, loading: statsLoading, error: statsError } = useApiWithContext(
+    (baseUrl) => () => api.client.transcode.getStats(baseUrl),
+    []
+  );
+
+  const stats = statsData?.data || {
+    completed: 0,
+    pending: 0,
+    inProgress: 0,
+    queued: 0,
+    failed: 0,
+    total: 0,
+    percentages: {
+      completed: 0,
+      pending: 0,
+      inProgress: 0,
+      queued: 0,
+      failed: 0,
+    },
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-red-600/20 rounded-lg">
+              <PlayCircle className="w-8 h-8 text-red-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">
+                Transcoder Manager
+              </h1>
+              <p className="text-gray-400">
+                Manage video transcoding status for movies and TV episodes
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-8 flex gap-4">
+          <Button
+            size="lg"
+            className="bg-red-600 hover:bg-red-700"
+            onClick={() => window.location.reload()}
+          >
+            <RefreshCw className="w-5 h-5 mr-2" />
+            Refresh Data
+          </Button>
+        </div>
+
+        {/* Statistics */}
+        {statsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            {[...Array(5)].map((_, i) => (
+              <Card key={i} className="bg-gray-800/50 border-gray-700">
+                <CardContent className="p-6 text-center">
+                  <div className="w-8 h-8 bg-gray-700 rounded mx-auto mb-2 animate-pulse"></div>
+                  <div className="h-8 bg-gray-700 rounded mb-2 animate-pulse"></div>
+                  <div className="h-4 bg-gray-700 rounded animate-pulse"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : statsError ? (
+          <div className="mb-8 p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
+            <p className="text-red-400">Failed to load statistics: {statsError.message}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            <Card className="bg-gradient-to-br from-green-600/20 to-green-800/20 border-green-500/30">
+              <CardContent className="p-6 text-center">
+                <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-white">
+                  {stats.completed}
+                </div>
+                <div className="text-sm text-gray-400">Completed</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentages?.completed?.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 border-yellow-500/30">
+              <CardContent className="p-6 text-center">
+                <Clock className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-white">
+                  {stats.pending}
+                </div>
+                <div className="text-sm text-gray-400">Pending</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentages?.pending?.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 border-purple-500/30">
+              <CardContent className="p-6 text-center">
+                <AlertTriangle className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-white">
+                  {stats.queued}
+                </div>
+                <div className="text-sm text-gray-400">Queued</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentages?.queued?.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 border-blue-500/30">
+              <CardContent className="p-6 text-center">
+                <Activity className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-white">
+                  {stats.inProgress}
+                </div>
+                <div className="text-sm text-gray-400">In Progress</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentages?.inProgress?.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-red-600/20 to-red-800/20 border-red-500/30">
+              <CardContent className="p-6 text-center">
+                <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-white">
+                  {stats.failed}
+                </div>
+                <div className="text-sm text-gray-400">Failed</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {stats.percentages?.failed?.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Tabs */}
+        <Tabs defaultValue="movies" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 bg-gray-900/50 border border-gray-800">
+            <TabsTrigger
+              value="movies"
+              className="data-[state=active]:bg-red-600 flex items-center gap-2"
+            >
+              <Film className="w-4 h-4" />
+              Movies
+            </TabsTrigger>
+            <TabsTrigger
+              value="series"
+              className="data-[state=active]:bg-red-600 flex items-center gap-2"
+            >
+              <Tv className="w-4 h-4" />
+              TV Series
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="movies" className="mt-6">
+            <Card className="bg-gray-900/50 border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Film className="w-5 h-5 text-red-400" />
+                  Movie Transcoding Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MovieTable />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="series" className="mt-6">
+            <Card className="bg-gray-900/50 border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Tv className="w-5 h-5 text-red-400" />
+                  Series Transcoding Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SeriesTable />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
