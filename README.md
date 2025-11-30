@@ -1,30 +1,39 @@
-# Image Analysis
+# ⚠️ ARCHIVED - Samflix Frontend
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+> **This repository has been archived and is no longer maintained.**
+>
+> **The project has been moved to: [samflix-monorepo](https://github.com/dev-sam17/samflix-monorepo)**
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/saurav-kumars-projects-bfa7d912/v0-image-analysis)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/3idr3LJ74gy)
+---
 
-## Overview
+## 📦 Repository Status
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+This repository contains the legacy frontend code for Samflix, a Netflix-like streaming application. All future development and updates are now happening in the unified monorepo.
 
-## Deployment
+## 🔄 Migration Notice
 
-Your project is live at:
+**Old Repository (Archived):** `samflix-frontend`  
+**New Repository (Active):** [samflix-monorepo](https://github.com/dev-sam17/samflix-monorepo)
 
-**[https://vercel.com/saurav-kumars-projects-bfa7d912/v0-image-analysis](https://vercel.com/saurav-kumars-projects-bfa7d912/v0-image-analysis)**
+The monorepo includes:
 
-## Build your app
+- Frontend (Next.js)
+- Backend (Node.js/Express)
+- Shared types and utilities
+- Unified development environment
 
-Continue building your app on:
+## 🚀 Getting Started with the New Repo
 
-**[https://v0.dev/chat/projects/3idr3LJ74gy](https://v0.dev/chat/projects/3idr3LJ74gy)**
+To continue working with Samflix, please clone the monorepo:
 
-## How It Works
+```bash
+git clone https://github.com/dev-sam17/samflix-monorepo.git
+cd samflix-monorepo
+```
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+Refer to the monorepo's README for setup instructions and documentation.
+
+---
+
+**Last Updated:** November 2024  
+**Status:** 🔒 Archived
